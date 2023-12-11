@@ -1,0 +1,17 @@
+### Get metrics data
+GET http://localhost:8080/metrics
+Accept: application/json
+
+### Update Gauge
+POST http://localhost:8080/update/gauge/someMetric/527
+Content-Type: text/plain
+
+### Update Counter
+POST http://localhost:8080/update/counter/someMetric/527
+Content-Type: text/plain
+
+### Increase Counter
+POST http://localhost:8080/update/counter/someMetric
+Content-Type: text/plain
+
+###
