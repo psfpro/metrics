@@ -1,10 +1,9 @@
 package http
 
 import (
-	"github.com/psfpro/metrics/internal/application"
-	"github.com/psfpro/metrics/internal/domain"
-	"github.com/psfpro/metrics/internal/infrastructure/api/http/handler"
-	"github.com/psfpro/metrics/internal/infrastructure/storage/memstorage"
+	"github.com/psfpro/metrics/internal/server/application"
+	handler2 "github.com/psfpro/metrics/internal/server/infrastructure/api/http/handler"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
 	"net/http"
 )
 
@@ -14,8 +13,8 @@ type App struct {
 }
 
 func NewApp(config *Config) *App {
-	gaugeMetricRepository := &memstorage.GaugeMetricRepository{Data: make(map[string]*domain.GaugeMetric)}
-	counterMetricRepository := &memstorage.CounterMetricRepository{Data: make(map[string]*domain.CounterMetric)}
+	gaugeMetricRepository := memstorage.NewGaugeMetricRepository()
+	counterMetricRepository := memstorage.NewCounterMetricRepository()
 	updateGaugeMetricHandler := &application.UpdateGaugeMetricHandler{
 		Repository: gaugeMetricRepository,
 	}
@@ -26,10 +25,10 @@ func NewApp(config *Config) *App {
 		Repository: counterMetricRepository,
 	}
 
-	badRequestHandler := handler.NewBadRequestHandler()
-	metricsRequestHandler := handler.NewMetricsRequestHandler(gaugeMetricRepository, counterMetricRepository)
-	updateGaugeRequestHandler := handler.NewUpdateGaugeRequestHandler(updateGaugeMetricHandler)
-	updateCounterRequestHandler := handler.NewUpdateCounterRequestHandler(updateCounterMetricHandler, increaseCounterMetricHandler)
+	badRequestHandler := handler2.NewBadRequestHandler()
+	metricsRequestHandler := handler2.NewMetricsRequestHandler(gaugeMetricRepository, counterMetricRepository)
+	updateGaugeRequestHandler := handler2.NewUpdateGaugeRequestHandler(updateGaugeMetricHandler)
+	updateCounterRequestHandler := handler2.NewUpdateCounterRequestHandler(updateCounterMetricHandler, increaseCounterMetricHandler)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(`/`, badRequestHandler.HandleRequest)
@@ -48,8 +47,4 @@ func (obj *App) Run() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-type Config struct {
-	Address string
 }

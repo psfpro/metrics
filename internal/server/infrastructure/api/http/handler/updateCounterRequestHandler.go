@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"github.com/psfpro/metrics/internal/application"
+	"fmt"
+	"github.com/psfpro/metrics/internal/server/application"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ func (obj *UpdateCounterRequestHandler) HandleRequest(response http.ResponseWrit
 	parts := strings.Split(request.RequestURI, "/")
 	if len(parts) == 4 && parts[3] != "" {
 		name := parts[3]
+		fmt.Printf("Increase counter %v\n", name)
 		obj.increaseCounterMetricHandler.Handle(name)
 	} else if len(parts) == 5 && parts[3] != "" && parts[4] != "" {
 		name := parts[3]
@@ -28,6 +30,7 @@ func (obj *UpdateCounterRequestHandler) HandleRequest(response http.ResponseWrit
 			response.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		fmt.Printf("Update counter %v: %v\n", name, value)
 		obj.updateCounterMetricHandler.Handle(name, value)
 	} else {
 		response.WriteHeader(http.StatusNotFound)

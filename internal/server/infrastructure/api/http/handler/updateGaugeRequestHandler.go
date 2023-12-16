@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"github.com/psfpro/metrics/internal/application"
+	"fmt"
+	"github.com/psfpro/metrics/internal/server/application"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ func (obj *UpdateGaugeRequestHandler) HandleRequest(response http.ResponseWriter
 			response.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		fmt.Printf("Update gauge %v: %v\n", name, value)
 		obj.updateGaugeMetricHandler.Handle(name, value)
 	} else {
 		response.WriteHeader(http.StatusNotFound)

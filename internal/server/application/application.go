@@ -1,8 +1,7 @@
 package application
 
 import (
-	"fmt"
-	"github.com/psfpro/metrics/internal/domain"
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 // UpdateGaugeMetricHandler Обновление gauge метрики
@@ -28,9 +27,7 @@ type UpdateCounterMetricHandler struct {
 func (obj UpdateCounterMetricHandler) Handle(name string, value int64) {
 	metric, exist := obj.Repository.FindByName(name)
 	if exist {
-		fmt.Println(metric)
 		metric.Update(value)
-		fmt.Println(metric)
 	} else {
 		metric = domain.NewCounterMetric(name)
 		obj.Repository.Add(metric)
@@ -45,9 +42,7 @@ type IncreaseCounterMetricHandler struct {
 func (obj IncreaseCounterMetricHandler) Handle(name string) {
 	metric, exist := obj.Repository.FindByName(name)
 	if exist {
-		fmt.Println(metric)
 		metric.Increase()
-		fmt.Println(metric)
 	} else {
 		metric = domain.NewCounterMetric(name)
 		obj.Repository.Add(metric)
