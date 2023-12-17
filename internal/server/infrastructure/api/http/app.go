@@ -18,7 +18,7 @@ func NewApp(config *Config) *App {
 }
 
 func (obj *App) Run() {
-	err := http.ListenAndServe(obj.config.Address, obj.router)
+	err := http.ListenAndServe(obj.config.Address.String(), obj.router)
 	if err != nil {
 		panic(err)
 	}

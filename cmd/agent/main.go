@@ -6,10 +6,11 @@ import (
 )
 
 func main() {
+	parseFlags()
 	app := agent.NewApp(&agent.Config{
-		ServerAddress:  "http://localhost:8080",
-		PollInterval:   2 * time.Second,
-		ReportInterval: 10 * time.Second,
+		ServerAddress:  "http://" + flagRunAddr,
+		PollInterval:   time.Duration(flagPollInterval) * time.Second,
+		ReportInterval: time.Duration(flagReportInterval) * time.Second,
 	})
 	app.Run()
 }

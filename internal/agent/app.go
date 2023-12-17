@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -27,17 +28,17 @@ func (obj *App) Run() {
 		metrics["RandomValue"] = rand.Float64()
 		pollCount++
 		if time.Since(lastReportTime) >= obj.config.ReportInterval {
-			fmt.Println("Отправка всех собранных метрик")
+			log.Println("Отправка всех собранных метрик")
 			for name, value := range metrics {
 				obj.sendMetric("gauge", name, value)
 			}
 
-			fmt.Println("Отправка метрики PollCount")
+			log.Println("Отправка метрики PollCount")
 			obj.sendMetric("counter", "PollCount", pollCount)
 			lastReportTime = time.Now()
 		}
 
-		fmt.Printf("Ждем интервал для сбора %v\n", obj.config.PollInterval)
+		log.Printf("Ждем интервал для сбора %v\n", obj.config.PollInterval)
 		time.Sleep(obj.config.PollInterval)
 	}
 }
@@ -81,7 +82,7 @@ func (obj *App) sendMetric(metricType, name string, value interface{}) {
 	urlString := fmt.Sprintf("%s/update/%s/%s/%v", obj.config.ServerAddress, metricType, name, value)
 	resp, err := http.Post(urlString, "text/plain", nil)
 	if err != nil {
-		fmt.Printf("Error sending metric: %s\n", err)
+		log.Printf("Error sending metric: %s\n", err)
 		return
 	}
 	defer resp.Body.Close()
