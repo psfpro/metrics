@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/psfpro/metrics/internal/server/application"
+	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type UpdateCounterRequestHandler struct {
@@ -18,21 +18,22 @@ func NewUpdateCounterRequestHandler(updateCounterMetricHandler *application.Upda
 }
 
 func (obj *UpdateCounterRequestHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
-	parts := strings.Split(request.RequestURI, "/")
-	if len(parts) == 4 && parts[3] != "" {
-		name := parts[3]
-		fmt.Printf("Increase counter %v\n", name)
+	name := chi.URLParam(request, "name")
+	value := chi.URLParam(request, "value")
+	if name == "" {
+		response.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if value == "" {
+		log.Printf("Increase counter %v\n", name)
 		obj.increaseCounterMetricHandler.Handle(name)
-	} else if len(parts) == 5 && parts[3] != "" && parts[4] != "" {
-		name := parts[3]
-		value, err := strconv.ParseInt(parts[4], 10, 64)
+	} else {
+		valueInt, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			response.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		fmt.Printf("Update counter %v: %v\n", name, value)
-		obj.updateCounterMetricHandler.Handle(name, value)
-	} else {
-		response.WriteHeader(http.StatusNotFound)
+		log.Printf("Update counter %v: %v\n", name, valueInt)
+		obj.updateCounterMetricHandler.Handle(name, valueInt)
 	}
 }

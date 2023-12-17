@@ -32,5 +32,5 @@ git fetch template && git checkout template/main .github
 Подробнее про локальный и автоматический запуск читайте в [README автотестов](https://github.com/Yandex-Practicum/go-autotests).
 
 ```
-metricstest -test.v -test.run=^TestIteration1$ -binary-path=cmd/server
+metricstest -test.v -test.run=^TestIteration1$ -binary-path=cmd/server/server
 ```

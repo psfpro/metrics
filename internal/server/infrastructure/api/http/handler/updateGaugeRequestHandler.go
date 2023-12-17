@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/psfpro/metrics/internal/server/application"
+	"log"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type UpdateGaugeRequestHandler struct {
@@ -17,17 +17,17 @@ func NewUpdateGaugeRequestHandler(updateGaugeMetricHandler *application.UpdateGa
 }
 
 func (obj *UpdateGaugeRequestHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
-	parts := strings.Split(request.RequestURI, "/")
-	if len(parts) == 5 && parts[3] != "" && parts[4] != "" {
-		name := parts[3]
-		value, err := strconv.ParseFloat(parts[4], 64)
-		if err != nil {
-			response.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		fmt.Printf("Update gauge %v: %v\n", name, value)
-		obj.updateGaugeMetricHandler.Handle(name, value)
-	} else {
+	name := chi.URLParam(request, "name")
+	value := chi.URLParam(request, "value")
+	if name == "" || value == "" {
 		response.WriteHeader(http.StatusNotFound)
+		return
 	}
+	valueFloat, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		response.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	log.Printf("Update gauge %v: %v\n", name, valueFloat)
+	obj.updateGaugeMetricHandler.Handle(name, valueFloat)
 }

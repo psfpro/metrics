@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"github.com/psfpro/metrics/internal/server/application"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -43,14 +41,12 @@ func TestUpdateGaugeRequestHandler_HandleRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, tt.target, nil)
-			w := httptest.NewRecorder()
-			repository := memstorage.NewGaugeMetricRepository()
-			NewUpdateGaugeRequestHandler(
-				&application.UpdateGaugeMetricHandler{Repository: repository},
-			).HandleRequest(w, request)
+			ts := httptest.NewServer(Router())
+			defer ts.Close()
+			request, err := http.NewRequest(http.MethodPost, ts.URL+tt.target, nil)
+			require.NoError(t, err)
 
-			res := w.Result()
+			res, _ := ts.Client().Do(request)
 			assert.Equal(t, tt.want.code, res.StatusCode)
 			defer res.Body.Close()
 			resBody, err := io.ReadAll(res.Body)

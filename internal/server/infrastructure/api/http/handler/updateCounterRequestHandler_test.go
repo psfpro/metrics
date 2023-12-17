@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"github.com/psfpro/metrics/internal/server/application"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -12,6 +10,8 @@ import (
 )
 
 func TestUpdateCounterRequestHandler_HandleRequest(t *testing.T) {
+	ts := httptest.NewServer(Router())
+	defer ts.Close()
 	type want struct {
 		code        int
 		response    string
@@ -52,15 +52,10 @@ func TestUpdateCounterRequestHandler_HandleRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, tt.target, nil)
-			w := httptest.NewRecorder()
-			repository := memstorage.NewCounterMetricRepository()
-			NewUpdateCounterRequestHandler(
-				&application.UpdateCounterMetricHandler{Repository: repository},
-				&application.IncreaseCounterMetricHandler{Repository: repository},
-			).HandleRequest(w, request)
+			request, err := http.NewRequest(http.MethodPost, ts.URL+tt.target, nil)
+			require.NoError(t, err)
 
-			res := w.Result()
+			res, _ := ts.Client().Do(request)
 			assert.Equal(t, tt.want.code, res.StatusCode)
 			defer res.Body.Close()
 			resBody, err := io.ReadAll(res.Body)
