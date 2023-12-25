@@ -5,41 +5,49 @@ import (
 )
 
 type GaugeMetricRepository struct {
-	Data map[string]*domain.GaugeMetric
+	data map[string]*domain.GaugeMetric
 }
 
 func NewGaugeMetricRepository() *GaugeMetricRepository {
-	return &GaugeMetricRepository{Data: make(map[string]*domain.GaugeMetric)}
+	return &GaugeMetricRepository{data: make(map[string]*domain.GaugeMetric)}
 }
 
-func (obj GaugeMetricRepository) FindByName(name string) (*domain.GaugeMetric, bool) {
-	result := obj.Data[name]
+func (obj *GaugeMetricRepository) FindAll() map[string]*domain.GaugeMetric {
+	return obj.data
+}
+
+func (obj *GaugeMetricRepository) FindByName(name string) (*domain.GaugeMetric, bool) {
+	result := obj.data[name]
 	if result == nil {
 		return nil, false
 	}
 
 	return result, true
 }
-func (obj GaugeMetricRepository) Add(metric *domain.GaugeMetric) {
-	obj.Data[metric.Name()] = metric
+func (obj *GaugeMetricRepository) Add(metric *domain.GaugeMetric) {
+	obj.data[metric.Name()] = metric
 }
 
 type CounterMetricRepository struct {
-	Data map[string]*domain.CounterMetric
+	data map[string]*domain.CounterMetric
 }
 
 func NewCounterMetricRepository() *CounterMetricRepository {
-	return &CounterMetricRepository{Data: make(map[string]*domain.CounterMetric)}
+	return &CounterMetricRepository{data: make(map[string]*domain.CounterMetric)}
 }
 
-func (obj CounterMetricRepository) FindByName(name string) (*domain.CounterMetric, bool) {
-	result := obj.Data[name]
+func (obj *CounterMetricRepository) FindAll() map[string]*domain.CounterMetric {
+	return obj.data
+}
+
+func (obj *CounterMetricRepository) FindByName(name string) (*domain.CounterMetric, bool) {
+	result := obj.data[name]
 	if result == nil {
 		return nil, false
 	}
 
 	return result, true
 }
-func (obj CounterMetricRepository) Add(metric *domain.CounterMetric) {
-	obj.Data[metric.Name()] = metric
+func (obj *CounterMetricRepository) Add(metric *domain.CounterMetric) {
+	obj.data[metric.Name()] = metric
 }

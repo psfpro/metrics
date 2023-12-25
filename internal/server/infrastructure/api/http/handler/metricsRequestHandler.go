@@ -50,10 +50,10 @@ func (obj *MetricsRequestHandler) HandleRequest(response http.ResponseWriter, re
 	gaugeData := make(map[string]*GaugeMetric)
 	counterData := make(map[string]*CounterMetric)
 
-	for k, v := range obj.gaugeMetricRepository.Data {
+	for k, v := range obj.gaugeMetricRepository.FindAll() {
 		gaugeData[k] = GaugeMetricFromModel(v)
 	}
-	for k, v := range obj.counterMetricRepository.Data {
+	for k, v := range obj.counterMetricRepository.FindAll() {
 		counterData[k] = CounterMetricFromModel(v)
 	}
 

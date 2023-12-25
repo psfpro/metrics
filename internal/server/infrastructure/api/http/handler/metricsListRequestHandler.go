@@ -30,11 +30,11 @@ func (obj *MetricsListRequestHandler) HandleRequest(response http.ResponseWriter
 			<h1>Metrics list</h1>
 			<table class="table">`
 	body += `<tr><td colspan="2"><b>Gauge metrics</b></td></tr>`
-	for _, v := range obj.gaugeMetricRepository.Data {
+	for _, v := range obj.gaugeMetricRepository.FindAll() {
 		body += fmt.Sprintf("<tr><td>%s</td><td>%v</td><tr>", v.Name(), strconv.FormatFloat(v.Value(), 'f', -1, 64))
 	}
 	body += `<tr><td colspan="2"><b>Counter metrics</b></td></tr>`
-	for _, v := range obj.counterMetricRepository.Data {
+	for _, v := range obj.counterMetricRepository.FindAll() {
 		body += fmt.Sprintf("<tr><td>%s</td><td>%v</td><tr>", v.Name(), strconv.FormatInt(v.Value(), 10))
 	}
 	body += `
