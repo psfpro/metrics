@@ -47,6 +47,7 @@ type CombinedMetrics struct {
 }
 
 func (obj *MetricsRequestHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
+	log.Println("Entering handler: MetricsRequestHandler")
 	gaugeData := make(map[string]*GaugeMetric)
 	counterData := make(map[string]*CounterMetric)
 

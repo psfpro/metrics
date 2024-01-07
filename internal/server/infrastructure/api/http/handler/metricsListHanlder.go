@@ -1,6 +1,9 @@
 package handler
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+)
 
 type MetricsListHandler struct {
 }
@@ -10,5 +13,6 @@ func NewMetricsListHandler() *MetricsListHandler {
 }
 
 func (obj *MetricsListHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
+	log.Println("Entering handler: MetricsListHandler")
 	response.WriteHeader(http.StatusBadRequest)
 }

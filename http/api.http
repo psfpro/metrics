@@ -14,4 +14,22 @@ Content-Type: text/plain
 POST http://localhost:8080/update/counter/someMetric
 Content-Type: text/plain
 
+### Update Gauge Json
+POST http://localhost:8080/update
+Content-Type: application/json
+
+{"id":"someMetric","type":"gauge","value":1.1}
+
+### Update Counter Json
+POST http://localhost:8080/update/counter/someMetric/527
+Content-Type: application/json
+
+{"id":"someMetric","type":"counter","value":1}
+
+### Increase Counter Json
+POST http://localhost:8080/update/counter/someMetric
+Content-Type: application/json
+
+{"id":"someMetric","type":"counter"}
+
 ###

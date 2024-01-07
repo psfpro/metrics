@@ -1,8 +1,13 @@
 package handler
 
 import (
+	"bytes"
 	"go.uber.org/zap"
+	"io"
+	"log"
 	"net/http"
+	"reflect"
+	"runtime"
 	"time"
 )
 
@@ -38,8 +43,14 @@ func Logger(next http.Handler) http.Handler {
 
 	sugar := *logger.Sugar()
 
+	name := runtime.FuncForPC(reflect.ValueOf(next).Pointer()).Name()
+	log.Printf("Handler function called: %s", name)
+
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		body := r.Body
+		bodyBytes, _ := io.ReadAll(body)
+		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 		responseData := &responseData{
 			status: 0,
@@ -59,6 +70,7 @@ func Logger(next http.Handler) http.Handler {
 			"status", responseData.status,
 			"duration", duration,
 			"size", responseData.size,
+			"body", string(bodyBytes),
 		)
 	}
 

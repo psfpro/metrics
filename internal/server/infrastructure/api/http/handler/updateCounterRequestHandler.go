@@ -18,6 +18,7 @@ func NewUpdateCounterRequestHandler(updateCounterMetricHandler *application.Upda
 }
 
 func (obj *UpdateCounterRequestHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
+	log.Println("Entering handler: UpdateCounterRequestHandler")
 	name := chi.URLParam(request, "name")
 	value := chi.URLParam(request, "value")
 	if name == "" {

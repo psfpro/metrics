@@ -1,7 +1,10 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/psfpro/metrics/internal/agent/model"
 	"log"
 	"math/rand"
 	"net/http"
@@ -30,11 +33,11 @@ func (obj *App) Run() {
 		if time.Since(lastReportTime) >= obj.config.ReportInterval {
 			log.Println("Отправка всех собранных метрик")
 			for name, value := range metrics {
-				obj.sendMetric("gauge", name, value)
+				obj.sendGaugeMetric(name, &value)
 			}
 
 			log.Println("Отправка метрики PollCount")
-			obj.sendMetric("counter", "PollCount", pollCount)
+			obj.sendCounterMetric("PollCount", &pollCount)
 			lastReportTime = time.Now()
 		}
 
@@ -81,6 +84,38 @@ func (obj *App) collectMetrics() map[string]float64 {
 func (obj *App) sendMetric(metricType, name string, value interface{}) {
 	urlString := fmt.Sprintf("%s/update/%s/%s/%v", obj.config.ServerAddress, metricType, name, value)
 	resp, err := http.Post(urlString, "text/plain", nil)
+	if err != nil {
+		log.Printf("Error sending metric: %s\n", err)
+		return
+	}
+	defer resp.Body.Close()
+}
+
+func (obj *App) sendGaugeMetric(name string, value *float64) {
+	urlString := fmt.Sprintf("%s/update", obj.config.ServerAddress)
+	metric := model.Metrics{ID: name, MType: "gauge", Value: value}
+	reqBytes, err := json.Marshal(metric)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	resp, err := http.Post(urlString, "application/json", bytes.NewBuffer(reqBytes))
+	if err != nil {
+		log.Printf("Error sending metric: %s\n", err)
+		return
+	}
+	defer resp.Body.Close()
+}
+
+func (obj *App) sendCounterMetric(name string, value *int64) {
+	urlString := fmt.Sprintf("%s/update", obj.config.ServerAddress)
+	metric := model.Metrics{ID: name, MType: "counter", Delta: value}
+	reqBytes, err := json.Marshal(metric)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	resp, err := http.Post(urlString, "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		log.Printf("Error sending metric: %s\n", err)
 		return

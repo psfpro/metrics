@@ -26,18 +26,23 @@ func Router() *chi.Mux {
 	metricsListRequestHandler := NewMetricsListRequestHandler(gaugeMetricRepository, counterMetricRepository)
 	updateGaugeRequestHandler := NewUpdateGaugeRequestHandler(updateGaugeMetricHandler)
 	updateCounterRequestHandler := NewUpdateCounterRequestHandler(updateCounterMetricHandler, increaseCounterMetricHandler)
+	updateRequestHandler := NewUpdateRequestHandler(updateGaugeMetricHandler, updateCounterMetricHandler, increaseCounterMetricHandler)
 	getMetricValueRequestHandler := NewGetMetricValueRequestHandler(gaugeMetricRepository, counterMetricRepository)
+	getRequestHandler := NewGetRequestHandler(gaugeMetricRepository, counterMetricRepository)
 
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, Logger, middleware.Logger, middleware.Recoverer)
 	router.Get(`/`, metricsListRequestHandler.HandleRequest)
 	router.Get(`/metrics`, metricsRequestHandler.HandleRequest)
 	router.Route(`/update`, func(router chi.Router) {
+		router.Post(`/`, updateRequestHandler.HandleRequest)
 		router.Post(`/gauge/{name}/{value}`, updateGaugeRequestHandler.HandleRequest)
 		router.Post(`/counter/{name}`, updateCounterRequestHandler.HandleRequest)
 		router.Post(`/counter/{name}/{value}`, updateCounterRequestHandler.HandleRequest)
 		router.Post(`/{type}/{name}/{value}`, badRequestHandler.HandleRequest)
 	})
+	router.Post(`/value`, getRequestHandler.HandleRequest)
+	router.Post(`/value/`, getRequestHandler.HandleRequest)
 	router.Get(`/value/{type}/{name}`, getMetricValueRequestHandler.HandleRequest)
 	router.NotFound(func(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusNotFound)

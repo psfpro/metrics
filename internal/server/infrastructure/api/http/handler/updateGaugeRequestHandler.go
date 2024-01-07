@@ -17,6 +17,7 @@ func NewUpdateGaugeRequestHandler(updateGaugeMetricHandler *application.UpdateGa
 }
 
 func (obj *UpdateGaugeRequestHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
+	log.Println("Entering handler: UpdateGaugeRequestHandler")
 	name := chi.URLParam(request, "name")
 	value := chi.URLParam(request, "value")
 	if name == "" || value == "" {

@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -17,6 +18,7 @@ func NewMetricsListRequestHandler(gaugeMetricRepository *memstorage.GaugeMetricR
 }
 
 func (obj *MetricsListRequestHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
+	log.Println("Entering handler: MetricsListRequestHandler")
 	body := `
 <!doctype html>
 	<head>

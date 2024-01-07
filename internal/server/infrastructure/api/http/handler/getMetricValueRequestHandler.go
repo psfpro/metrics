@@ -18,6 +18,7 @@ func NewGetMetricValueRequestHandler(gaugeMetricRepository domain.GaugeMetricRep
 }
 
 func (obj *GetMetricValueRequestHandler) HandleRequest(response http.ResponseWriter, request *http.Request) {
+	log.Println("Entering handler: GetMetricValueRequestHandler")
 	metricType := chi.URLParam(request, "type")
 	metricName := chi.URLParam(request, "name")
 
