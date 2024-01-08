@@ -31,7 +31,7 @@ func Router() *chi.Mux {
 	getRequestHandler := NewGetRequestHandler(gaugeMetricRepository, counterMetricRepository)
 
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, Logger, middleware.Logger, middleware.Recoverer)
+	router.Use(middleware.RealIP, Compressor, Logger, middleware.Logger, middleware.Recoverer)
 	router.Get(`/`, metricsListRequestHandler.HandleRequest)
 	router.Get(`/metrics`, metricsRequestHandler.HandleRequest)
 	router.Route(`/update`, func(router chi.Router) {

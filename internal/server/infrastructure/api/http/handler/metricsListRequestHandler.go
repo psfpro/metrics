@@ -44,5 +44,6 @@ func (obj *MetricsListRequestHandler) HandleRequest(response http.ResponseWriter
 		</div>
 	</body>
 </html>`
+	response.Header().Set("Content-Type", "text/html")
 	response.Write([]byte(body))
 }

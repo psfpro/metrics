@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/psfpro/metrics/internal/agent/model"
@@ -92,14 +93,31 @@ func (obj *App) sendMetric(metricType, name string, value interface{}) {
 }
 
 func (obj *App) sendGaugeMetric(name string, value *float64) {
-	urlString := fmt.Sprintf("%s/update", obj.config.ServerAddress)
 	metric := model.Metrics{ID: name, MType: "gauge", Value: value}
+	obj.send(metric)
+}
+
+func (obj *App) sendCounterMetric(name string, value *int64) {
+	metric := model.Metrics{ID: name, MType: "counter", Delta: value}
+	obj.send(metric)
+}
+
+func (obj *App) send(metric model.Metrics) {
 	reqBytes, err := json.Marshal(metric)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	resp, err := http.Post(urlString, "application/json", bytes.NewBuffer(reqBytes))
+	urlString := fmt.Sprintf("%s/update", obj.config.ServerAddress)
+	body, err := obj.compress(reqBytes)
+	if err != nil {
+		log.Printf("Error compress metric: %s\n", err)
+		return
+	}
+	request, _ := http.NewRequest("POST", urlString, &body)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Encoding", "gzip")
+	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		log.Printf("Error sending metric: %s\n", err)
 		return
@@ -107,18 +125,18 @@ func (obj *App) sendGaugeMetric(name string, value *float64) {
 	defer resp.Body.Close()
 }
 
-func (obj *App) sendCounterMetric(name string, value *int64) {
-	urlString := fmt.Sprintf("%s/update", obj.config.ServerAddress)
-	metric := model.Metrics{ID: name, MType: "counter", Delta: value}
-	reqBytes, err := json.Marshal(metric)
+func (obj *App) compress(data []byte) (bytes.Buffer, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+
+	_, err := w.Write(data)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return b, fmt.Errorf("failed write data to compress temporary buffer: %v", err)
 	}
-	resp, err := http.Post(urlString, "application/json", bytes.NewBuffer(reqBytes))
+	err = w.Close()
 	if err != nil {
-		log.Printf("Error sending metric: %s\n", err)
-		return
+		return b, fmt.Errorf("failed compress data: %v", err)
 	}
-	defer resp.Body.Close()
+
+	return b, nil
 }
