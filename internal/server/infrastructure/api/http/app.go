@@ -1,24 +1,25 @@
 package http
 
 import (
-	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/handler"
+	"log"
 	"net/http"
 )
 
 type App struct {
-	config *Config
+	addr   string
 	router http.Handler
 }
 
-func NewApp(config *Config) *App {
+func NewApp(addr string, router http.Handler) *App {
 	return &App{
-		config: config,
-		router: handler.Router(),
+		addr:   addr,
+		router: router,
 	}
 }
 
 func (obj *App) Run() {
-	err := http.ListenAndServe(obj.config.Address.String(), obj.router)
+	log.Printf("Start server addr: %v", obj.addr)
+	err := http.ListenAndServe(obj.addr, obj.router)
 	if err != nil {
 		panic(err)
 	}

@@ -3,17 +3,16 @@ package handler
 import (
 	"encoding/json"
 	"github.com/psfpro/metrics/internal/server/domain"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
 	"log"
 	"net/http"
 )
 
 type MetricsRequestHandler struct {
-	gaugeMetricRepository   *memstorage.GaugeMetricRepository
-	counterMetricRepository *memstorage.CounterMetricRepository
+	gaugeMetricRepository   domain.GaugeMetricRepository
+	counterMetricRepository domain.CounterMetricRepository
 }
 
-func NewMetricsRequestHandler(gaugeMetricRepository *memstorage.GaugeMetricRepository, counterMetricRepository *memstorage.CounterMetricRepository) *MetricsRequestHandler {
+func NewMetricsRequestHandler(gaugeMetricRepository domain.GaugeMetricRepository, counterMetricRepository domain.CounterMetricRepository) *MetricsRequestHandler {
 	return &MetricsRequestHandler{gaugeMetricRepository: gaugeMetricRepository, counterMetricRepository: counterMetricRepository}
 }
 

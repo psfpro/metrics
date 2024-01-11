@@ -2,18 +2,18 @@ package handler
 
 import (
 	"fmt"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
+	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
 	"net/http"
 	"strconv"
 )
 
 type MetricsListRequestHandler struct {
-	gaugeMetricRepository   *memstorage.GaugeMetricRepository
-	counterMetricRepository *memstorage.CounterMetricRepository
+	gaugeMetricRepository   domain.GaugeMetricRepository
+	counterMetricRepository domain.CounterMetricRepository
 }
 
-func NewMetricsListRequestHandler(gaugeMetricRepository *memstorage.GaugeMetricRepository, counterMetricRepository *memstorage.CounterMetricRepository) *MetricsListRequestHandler {
+func NewMetricsListRequestHandler(gaugeMetricRepository domain.GaugeMetricRepository, counterMetricRepository domain.CounterMetricRepository) *MetricsListRequestHandler {
 	return &MetricsListRequestHandler{gaugeMetricRepository: gaugeMetricRepository, counterMetricRepository: counterMetricRepository}
 }
 

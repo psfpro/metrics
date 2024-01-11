@@ -5,7 +5,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/psfpro/metrics/internal/server/application"
 	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
-	"net/http"
 )
 
 func Router() *chi.Mux {
@@ -22,6 +21,7 @@ func Router() *chi.Mux {
 	}
 
 	badRequestHandler := NewBadRequestHandler()
+	notFoundHandler := NewNotFoundRequestHandler()
 	metricsRequestHandler := NewMetricsRequestHandler(gaugeMetricRepository, counterMetricRepository)
 	metricsListRequestHandler := NewMetricsListRequestHandler(gaugeMetricRepository, counterMetricRepository)
 	updateGaugeRequestHandler := NewUpdateGaugeRequestHandler(updateGaugeMetricHandler)
@@ -44,9 +44,7 @@ func Router() *chi.Mux {
 	router.Post(`/value`, getRequestHandler.HandleRequest)
 	router.Post(`/value/`, getRequestHandler.HandleRequest)
 	router.Get(`/value/{type}/{name}`, getMetricValueRequestHandler.HandleRequest)
-	router.NotFound(func(response http.ResponseWriter, request *http.Request) {
-		response.WriteHeader(http.StatusNotFound)
-	})
+	router.NotFound(notFoundHandler.HandleRequest)
 
 	return router
 }
