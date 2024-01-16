@@ -1,3 +1,6 @@
+### Ping
+GET http://localhost:8080/ping
+
 ### Get metrics data
 GET http://localhost:8080/metrics
 Accept: application/json

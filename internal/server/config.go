@@ -13,22 +13,31 @@ type Config struct {
 	storeInterval   int
 	fileStoragePath string
 	restore         bool
+	databaseDsn     *DatabaseDsn
 }
 
 func NewConfig() *Config {
 	address := &NetAddress{}
 	address.Set(":8080")
+	databaseDsn := &DatabaseDsn{value: "host=localhost user=app password=pass dbname=app sslmode=disable"}
 	_ = flag.Value(address)
+	_ = flag.Value(databaseDsn)
 	flag.Var(address, "a", "Net serverAddress host:port")
+	flag.Var(databaseDsn, "d", "Database DSN")
 	flag.Parse()
 	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
 		address.Set(envRunAddr)
 	}
+	if envDatabaseDsn := os.Getenv("DATABASE_DSN"); envDatabaseDsn != "" {
+		databaseDsn.Set(envDatabaseDsn)
+	}
+
 	return &Config{
 		serverAddress:   address,
 		storeInterval:   300,
 		fileStoragePath: "/tmp/metrics-db.json",
 		restore:         true,
+		databaseDsn:     databaseDsn,
 	}
 }
 
@@ -52,5 +61,19 @@ func (a *NetAddress) Set(s string) error {
 	}
 	a.Host = hp[0]
 	a.Port = port
+	return nil
+}
+
+type DatabaseDsn struct {
+	value string
+}
+
+func (d DatabaseDsn) String() string {
+	return d.value
+}
+
+func (d *DatabaseDsn) Set(s string) error {
+	d.value = s
+
 	return nil
 }

@@ -1,3 +1,9 @@
+up:
+	docker compose up -d
+
+down:
+	docker compose down
+
 test: clear vet build-server build-agent metrics-test
 
 clear:
@@ -13,7 +19,7 @@ build-agent:
 	cd cmd/agent && go build -buildvcs=false  -o agent
 
 metrics-test:
-	metricstest -test.v -test.run=^TestIteration9*$$ \
+	metricstest -test.v -test.run=^TestIteration10*$$ \
                 -source-path=. \
                 -agent-binary-path=cmd/agent/agent \
                 -binary-path=cmd/server/server \

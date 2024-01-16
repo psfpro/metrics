@@ -1,8 +1,12 @@
 package server
 
 import (
+	"database/sql"
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/psfpro/metrics/internal/server/application"
 	"github.com/psfpro/metrics/internal/server/infrastructure/api/http"
 	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/handler"
@@ -20,6 +24,11 @@ func (c Container) App() *http.App {
 func NewContainer() *Container {
 	config := NewConfig()
 
+	db, err := sql.Open("pgx", config.databaseDsn.String())
+	if err != nil {
+		panic(err)
+	}
+
 	entityManager := filestorage.NewEntityManager(config.fileStoragePath)
 	storageMiddleware := filestorage.NewMiddleware(entityManager)
 	gaugeMetricRepository := filestorage.NewGaugeMetricRepository(entityManager)
@@ -34,6 +43,7 @@ func NewContainer() *Container {
 		Repository: counterMetricRepository,
 	}
 
+	pingRequestHandler := handler.NewPingRequestHandler(db)
 	badRequestHandler := handler.NewBadRequestHandler()
 	notFoundHandler := handler.NewNotFoundRequestHandler()
 	metricsRequestHandler := handler.NewMetricsRequestHandler(gaugeMetricRepository, counterMetricRepository)
@@ -47,6 +57,7 @@ func NewContainer() *Container {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, handler.Compressor, handler.Logger, middleware.Logger, storageMiddleware.Handle, middleware.Recoverer)
 	router.Get(`/`, metricsListRequestHandler.HandleRequest)
+	router.Get(`/ping`, pingRequestHandler.HandleRequest)
 	router.Get(`/metrics`, metricsRequestHandler.HandleRequest)
 	router.Route(`/update`, func(router chi.Router) {
 		router.Post(`/`, updateRequestHandler.HandleRequest)
