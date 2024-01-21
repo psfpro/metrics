@@ -2,7 +2,7 @@ package application
 
 import (
 	"github.com/psfpro/metrics/internal/server/domain"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 	"testing"
 )
 
@@ -22,7 +22,7 @@ func TestIncreaseCounterMetricHandler_Handle(t *testing.T) {
 		{
 			name: "metric",
 			fields: fields{
-				Repository: memstorage.NewCounterMetricRepository(),
+				Repository: storage.NewCounterMetricRepository(),
 			},
 			args: args{
 				name: "MetricName",
@@ -55,7 +55,7 @@ func TestUpdateCounterMetricHandler_Handle(t *testing.T) {
 		{
 			name: "metric",
 			fields: fields{
-				Repository: memstorage.NewCounterMetricRepository(),
+				Repository: storage.NewCounterMetricRepository(),
 			},
 			args: args{
 				name:  "MetricName",
@@ -89,7 +89,7 @@ func TestUpdateGaugeMetricHandler_Handle(t *testing.T) {
 		{
 			name: "metric",
 			fields: fields{
-				Repository: memstorage.NewGaugeMetricRepository(),
+				Repository: storage.NewGaugeMetricRepository(),
 			},
 			args: args{
 				name:  "MetricName",

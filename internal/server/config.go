@@ -19,7 +19,7 @@ type Config struct {
 func NewConfig() *Config {
 	address := &NetAddress{}
 	address.Set(":8080")
-	databaseDsn := &DatabaseDsn{value: "host=localhost user=app password=pass dbname=app sslmode=disable"}
+	databaseDsn := &DatabaseDsn{}
 	_ = flag.Value(address)
 	_ = flag.Value(databaseDsn)
 	flag.Var(address, "a", "Net serverAddress host:port")

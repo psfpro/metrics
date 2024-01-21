@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -35,7 +35,7 @@ func TestMetricsRequestHandler_HandleRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, tt.target, nil)
 			w := httptest.NewRecorder()
-			NewMetricsRequestHandler(memstorage.NewGaugeMetricRepository(), memstorage.NewCounterMetricRepository()).HandleRequest(w, request)
+			NewMetricsRequestHandler(storage.NewGaugeMetricRepository(), storage.NewCounterMetricRepository()).HandleRequest(w, request)
 
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode)

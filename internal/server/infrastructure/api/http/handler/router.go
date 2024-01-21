@@ -4,12 +4,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/psfpro/metrics/internal/server/application"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/memstorage"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 )
 
 func Router() *chi.Mux {
-	gaugeMetricRepository := memstorage.NewGaugeMetricRepository()
-	counterMetricRepository := memstorage.NewCounterMetricRepository()
+	gaugeMetricRepository := storage.NewGaugeMetricRepository()
+	counterMetricRepository := storage.NewCounterMetricRepository()
 	updateGaugeMetricHandler := &application.UpdateGaugeMetricHandler{
 		Repository: gaugeMetricRepository,
 	}

@@ -1,8 +1,12 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
+	"log"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -10,7 +14,6 @@ import (
 	"github.com/psfpro/metrics/internal/server/application"
 	"github.com/psfpro/metrics/internal/server/infrastructure/api/http"
 	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/handler"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage/filestorage"
 )
 
 type Container struct {
@@ -23,16 +26,40 @@ func (c Container) App() *http.App {
 
 func NewContainer() *Container {
 	config := NewConfig()
+	ctx := context.Background()
 
-	db, err := sql.Open("pgx", config.databaseDsn.String())
+	gaugeMetricRepository := storage.NewGaugeMetricRepository()
+	counterMetricRepository := storage.NewCounterMetricRepository()
+
+	var storageAdapter storage.Adapter
+	storageAdapter = storage.NewDumbAdapter()
+
+	file, err := os.OpenFile(config.fileStoragePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		panic(err)
+		log.Printf("Storage adapter File error: %v", err)
+	} else {
+		log.Printf("Storage adapter File")
+		storageAdapter = storage.NewFileAdapter(file, counterMetricRepository, gaugeMetricRepository)
 	}
 
-	entityManager := filestorage.NewEntityManager(config.fileStoragePath)
-	storageMiddleware := filestorage.NewMiddleware(entityManager)
-	gaugeMetricRepository := filestorage.NewGaugeMetricRepository(entityManager)
-	counterMetricRepository := filestorage.NewCounterMetricRepository(entityManager)
+	db, err := sql.Open("pgx", config.databaseDsn.String())
+	pingErr := db.Ping()
+	if err != nil {
+		log.Printf("Storage adapter DB error: %v", err)
+	}
+	if pingErr != nil {
+		log.Printf("Storage adapter DB error: %v", pingErr)
+	} else {
+		log.Printf("Storage adapter DB")
+		storageAdapter = storage.NewDbAdapter(db, counterMetricRepository, gaugeMetricRepository)
+	}
+
+	err = storageAdapter.Restore(ctx)
+	if err != nil {
+		log.Printf("Storage restore error: %v", err)
+	}
+	storageMiddleware := storage.NewMiddleware(storageAdapter)
+
 	updateGaugeMetricHandler := &application.UpdateGaugeMetricHandler{
 		Repository: gaugeMetricRepository,
 	}
