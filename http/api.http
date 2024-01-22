@@ -35,4 +35,11 @@ Content-Type: application/json
 
 {"id":"someMetric","type":"counter"}
 
-###
+### Update metrics Json
+POST http://localhost:8080/updates/
+Content-Type: application/json
+
+[
+  {"id":"someMetric","type":"gauge","value":1.1},
+  {"id":"someMetric","type":"counter","value":1}
+]

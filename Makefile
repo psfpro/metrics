@@ -19,7 +19,7 @@ build-agent:
 	cd cmd/agent && go build -buildvcs=false  -o agent
 
 metrics-test:
-	metricstest -test.v -test.run=^TestIteration11*$$ \
+	metricstest -test.v -test.run=^TestIteration12$$ \
                 -source-path=. \
                 -agent-binary-path=cmd/agent/agent \
                 -binary-path=cmd/server/server \

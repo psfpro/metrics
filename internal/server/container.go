@@ -51,12 +51,16 @@ func NewContainer() *Container {
 		log.Printf("Storage adapter DB error: %v", pingErr)
 	} else {
 		log.Printf("Storage adapter DB")
-		storageAdapter = storage.NewDbAdapter(db, counterMetricRepository, gaugeMetricRepository)
+		storageAdapter = storage.NewDBAdapter(db, counterMetricRepository, gaugeMetricRepository)
 	}
 
-	err = storageAdapter.Restore(ctx)
-	if err != nil {
-		log.Printf("Storage restore error: %v", err)
+	if config.restore {
+		err = storageAdapter.Restore(ctx)
+		if err != nil {
+			log.Printf("Storage restore error: %v", err)
+		} else {
+			log.Printf("Storage restore")
+		}
 	}
 	storageMiddleware := storage.NewMiddleware(storageAdapter)
 
@@ -78,6 +82,7 @@ func NewContainer() *Container {
 	updateGaugeRequestHandler := handler.NewUpdateGaugeRequestHandler(updateGaugeMetricHandler)
 	updateCounterRequestHandler := handler.NewUpdateCounterRequestHandler(updateCounterMetricHandler, increaseCounterMetricHandler)
 	updateRequestHandler := handler.NewUpdateRequestHandler(updateGaugeMetricHandler, updateCounterMetricHandler, increaseCounterMetricHandler)
+	updatesRequestHandler := handler.NewUpdatesRequestHandler(updateGaugeMetricHandler, updateCounterMetricHandler, increaseCounterMetricHandler)
 	getMetricValueRequestHandler := handler.NewGetMetricValueRequestHandler(gaugeMetricRepository, counterMetricRepository)
 	getRequestHandler := handler.NewGetRequestHandler(gaugeMetricRepository, counterMetricRepository)
 
@@ -93,6 +98,8 @@ func NewContainer() *Container {
 		router.Post(`/counter/{name}/{value}`, updateCounterRequestHandler.HandleRequest)
 		router.Post(`/{type}/{name}/{value}`, badRequestHandler.HandleRequest)
 	})
+	router.Post(`/updates`, updatesRequestHandler.HandleRequest)
+	router.Post(`/updates/`, updatesRequestHandler.HandleRequest)
 	router.Post(`/value`, getRequestHandler.HandleRequest)
 	router.Post(`/value/`, getRequestHandler.HandleRequest)
 	router.Get(`/value/{type}/{name}`, getMetricValueRequestHandler.HandleRequest)

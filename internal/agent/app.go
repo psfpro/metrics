@@ -32,19 +32,38 @@ func (obj *App) Run() {
 		metrics["RandomValue"] = rand.Float64()
 		pollCount++
 		if time.Since(lastReportTime) >= obj.config.ReportInterval {
-			log.Println("Отправка всех собранных метрик")
-			for name, value := range metrics {
-				obj.sendGaugeMetric(name, &value)
-			}
-
-			log.Println("Отправка метрики PollCount")
-			obj.sendCounterMetric("PollCount", &pollCount)
+			// obj.sendMetrics(metrics, pollCount)
+			obj.sendBatchMetrics(metrics, pollCount)
 			lastReportTime = time.Now()
 		}
 
 		log.Printf("Ждем интервал для сбора %v\n", obj.config.PollInterval)
 		time.Sleep(obj.config.PollInterval)
 	}
+}
+
+func (obj *App) sendMetrics(metrics map[string]float64, pollCount int64) {
+	log.Println("Отправка всех собранных метрик")
+	for name, value := range metrics {
+		metric := obj.gaugeMetric(name, &value)
+		obj.send(metric)
+	}
+
+	log.Println("Отправка метрики PollCount")
+	metric := obj.counterMetric("PollCount", &pollCount)
+	obj.send(metric)
+}
+
+func (obj *App) sendBatchMetrics(metrics map[string]float64, pollCount int64) {
+	var batch []model.Metrics
+	log.Println("Отправка всех собранных метрик")
+	for name, value := range metrics {
+		batch = append(batch, obj.gaugeMetric(name, &value))
+	}
+
+	log.Println("Отправка метрики PollCount")
+	batch = append(batch, obj.counterMetric("PollCount", &pollCount))
+	obj.sendBatch(batch)
 }
 
 func (obj *App) collectMetrics() map[string]float64 {
@@ -92,14 +111,12 @@ func (obj *App) sendMetric(metricType, name string, value interface{}) {
 	defer resp.Body.Close()
 }
 
-func (obj *App) sendGaugeMetric(name string, value *float64) {
-	metric := model.Metrics{ID: name, MType: "gauge", Value: value}
-	obj.send(metric)
+func (obj *App) gaugeMetric(name string, value *float64) model.Metrics {
+	return model.Metrics{ID: name, MType: "gauge", Value: value}
 }
 
-func (obj *App) sendCounterMetric(name string, value *int64) {
-	metric := model.Metrics{ID: name, MType: "counter", Delta: value}
-	obj.send(metric)
+func (obj *App) counterMetric(name string, value *int64) model.Metrics {
+	return model.Metrics{ID: name, MType: "counter", Delta: value}
 }
 
 func (obj *App) send(metric model.Metrics) {
@@ -109,6 +126,29 @@ func (obj *App) send(metric model.Metrics) {
 		return
 	}
 	urlString := fmt.Sprintf("%s/update", obj.config.ServerAddress)
+	body, err := obj.compress(reqBytes)
+	if err != nil {
+		log.Printf("Error compress metric: %s\n", err)
+		return
+	}
+	request, _ := http.NewRequest("POST", urlString, &body)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Encoding", "gzip")
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		log.Printf("Error sending metric: %s\n", err)
+		return
+	}
+	defer resp.Body.Close()
+}
+
+func (obj *App) sendBatch(metric []model.Metrics) {
+	reqBytes, err := json.Marshal(metric)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	urlString := fmt.Sprintf("%s/updates", obj.config.ServerAddress)
 	body, err := obj.compress(reqBytes)
 	if err != nil {
 		log.Printf("Error compress metric: %s\n", err)

@@ -10,7 +10,7 @@ import (
 
 type Config struct {
 	serverAddress   *NetAddress
-	storeInterval   int
+	storeInterval   int64
 	fileStoragePath string
 	restore         bool
 	databaseDsn     *DatabaseDsn
@@ -22,6 +22,9 @@ func NewConfig() *Config {
 	databaseDsn := &DatabaseDsn{}
 	_ = flag.Value(address)
 	_ = flag.Value(databaseDsn)
+	storeInterval := flag.Int64("i", 300, "Store interval")
+	fileStoragePath := flag.String("f", "/tmp/metrics-db.json", "File storage path")
+	restore := flag.Bool("r", true, "Restore")
 	flag.Var(address, "a", "Net serverAddress host:port")
 	flag.Var(databaseDsn, "d", "Database DSN")
 	flag.Parse()
@@ -31,12 +34,23 @@ func NewConfig() *Config {
 	if envDatabaseDsn := os.Getenv("DATABASE_DSN"); envDatabaseDsn != "" {
 		databaseDsn.Set(envDatabaseDsn)
 	}
+	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
+		i, _ := strconv.ParseInt(envStoreInterval, 10, 64)
+		storeInterval = &i
+	}
+	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
+		fileStoragePath = &envFileStoragePath
+	}
+	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+		r, _ := strconv.ParseBool(envRestore)
+		restore = &r
+	}
 
 	return &Config{
 		serverAddress:   address,
-		storeInterval:   300,
-		fileStoragePath: "/tmp/metrics-db.json",
-		restore:         true,
+		storeInterval:   *storeInterval,
+		fileStoragePath: *fileStoragePath,
+		restore:         *restore,
 		databaseDsn:     databaseDsn,
 	}
 }

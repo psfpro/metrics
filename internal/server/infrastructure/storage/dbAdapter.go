@@ -8,17 +8,17 @@ import (
 	"log"
 )
 
-type DbAdapter struct {
+type DBAdapter struct {
 	db                      *sql.DB
 	counterMetricRepository *CounterMetricRepository
 	gaugeMetricRepository   *GaugeMetricRepository
 }
 
-func NewDbAdapter(db *sql.DB, counterMetricRepository *CounterMetricRepository, gaugeMetricRepository *GaugeMetricRepository) *DbAdapter {
-	return &DbAdapter{db: db, counterMetricRepository: counterMetricRepository, gaugeMetricRepository: gaugeMetricRepository}
+func NewDBAdapter(db *sql.DB, counterMetricRepository *CounterMetricRepository, gaugeMetricRepository *GaugeMetricRepository) *DBAdapter {
+	return &DBAdapter{db: db, counterMetricRepository: counterMetricRepository, gaugeMetricRepository: gaugeMetricRepository}
 }
 
-func (a *DbAdapter) Flush(ctx context.Context) error {
+func (a *DBAdapter) Flush(ctx context.Context) error {
 	tx, err := a.db.Begin()
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ DO UPDATE SET
 	return tx.Commit()
 }
 
-func (a *DbAdapter) Restore(ctx context.Context) error {
+func (a *DBAdapter) Restore(ctx context.Context) error {
 	createGaugeMetricTableQuery := `
 CREATE TABLE IF NOT EXISTS gauge_metric (
     id UUID PRIMARY KEY,
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS counter_metric (
 	return nil
 }
 
-func (a *DbAdapter) uuidByName(name string) uuid.UUID {
+func (a *DBAdapter) uuidByName(name string) uuid.UUID {
 	ns, _ := uuid.FromString("6ebd7718-6855-499c-886e-54a4aea9c5c5")
 	return uuid.NewV5(ns, name)
 }
