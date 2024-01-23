@@ -33,7 +33,10 @@ func (obj *App) Run() {
 		pollCount++
 		if time.Since(lastReportTime) >= obj.config.ReportInterval {
 			// obj.sendMetrics(metrics, pollCount)
-			obj.sendBatchMetrics(metrics, pollCount)
+			err := obj.sendBatchMetrics(metrics, pollCount)
+			if err != nil {
+				log.Printf("Ошибка отправки метрик: %v", err)
+			}
 			lastReportTime = time.Now()
 		}
 
@@ -54,16 +57,27 @@ func (obj *App) sendMetrics(metrics map[string]float64, pollCount int64) {
 	obj.send(metric)
 }
 
-func (obj *App) sendBatchMetrics(metrics map[string]float64, pollCount int64) {
+func (obj *App) sendBatchMetrics(metrics map[string]float64, pollCount int64) error {
 	var batch []model.Metrics
 	log.Println("Отправка всех собранных метрик")
 	for name, value := range metrics {
 		batch = append(batch, obj.gaugeMetric(name, &value))
 	}
-
-	log.Println("Отправка метрики PollCount")
 	batch = append(batch, obj.counterMetric("PollCount", &pollCount))
-	obj.sendBatch(batch)
+
+	var err error
+	retryDelays := []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+
+	for _, delay := range retryDelays {
+		err = obj.sendBatch(batch)
+		if err == nil {
+			return nil
+		}
+
+		time.Sleep(delay)
+	}
+
+	return fmt.Errorf("после нескольких попыток: %w", err)
 }
 
 func (obj *App) collectMetrics() map[string]float64 {
@@ -142,27 +156,26 @@ func (obj *App) send(metric model.Metrics) {
 	defer resp.Body.Close()
 }
 
-func (obj *App) sendBatch(metric []model.Metrics) {
+func (obj *App) sendBatch(metric []model.Metrics) error {
 	reqBytes, err := json.Marshal(metric)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return err
 	}
 	urlString := fmt.Sprintf("%s/updates", obj.config.ServerAddress)
 	body, err := obj.compress(reqBytes)
 	if err != nil {
-		log.Printf("Error compress metric: %s\n", err)
-		return
+		return err
 	}
 	request, _ := http.NewRequest("POST", urlString, &body)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
-		log.Printf("Error sending metric: %s\n", err)
-		return
+		return err
 	}
 	defer resp.Body.Close()
+	return nil
 }
 
 func (obj *App) compress(data []byte) (bytes.Buffer, error) {
