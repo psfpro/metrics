@@ -63,6 +63,7 @@ func NewContainer() *Container {
 		}
 	}
 	storageMiddleware := storage.NewMiddleware(storageAdapter)
+	hashCheckerMiddleware := handler.NewHashChecker(config.hashKey)
 
 	updateGaugeMetricHandler := &application.UpdateGaugeMetricHandler{
 		Repository: gaugeMetricRepository,
@@ -87,7 +88,7 @@ func NewContainer() *Container {
 	getRequestHandler := handler.NewGetRequestHandler(gaugeMetricRepository, counterMetricRepository)
 
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, handler.Compressor, handler.Logger, middleware.Logger, storageMiddleware.Handle, middleware.Recoverer)
+	router.Use(middleware.RealIP, handler.Compressor, handler.Logger, middleware.Logger, hashCheckerMiddleware.Check, storageMiddleware.Handle, middleware.Recoverer)
 	router.Get(`/`, metricsListRequestHandler.HandleRequest)
 	router.Get(`/ping`, pingRequestHandler.HandleRequest)
 	router.Get(`/metrics`, metricsRequestHandler.HandleRequest)

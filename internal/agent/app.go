@@ -3,6 +3,9 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/psfpro/metrics/internal/agent/model"
@@ -32,7 +35,6 @@ func (obj *App) Run() {
 		metrics["RandomValue"] = rand.Float64()
 		pollCount++
 		if time.Since(lastReportTime) >= obj.config.ReportInterval {
-			// obj.sendMetrics(metrics, pollCount)
 			err := obj.sendBatchMetrics(metrics, pollCount)
 			if err != nil {
 				log.Printf("Ошибка отправки метрик: %v", err)
@@ -170,6 +172,12 @@ func (obj *App) sendBatch(metric []model.Metrics) error {
 	request, _ := http.NewRequest("POST", urlString, &body)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
+	if obj.config.HashKey != "" {
+		hmac := hmac.New(sha256.New, []byte(obj.config.HashKey))
+		hmac.Write(reqBytes)
+		signature := hex.EncodeToString(hmac.Sum(nil))
+		request.Header.Set("HashSHA256", signature)
+	}
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return err

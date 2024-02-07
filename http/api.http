@@ -38,6 +38,7 @@ Content-Type: application/json
 ### Update metrics Json
 POST http://localhost:8080/updates/
 Content-Type: application/json
+HashSHA256: 46d6f5b3462f11d0603d6d3cdae0b6c1b46a5e99109d43ada717bd466ff70836
 
 [
   {"id":"someMetric","type":"gauge","value":1.1},
