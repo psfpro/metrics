@@ -1,0 +1,50 @@
+package handler
+
+import (
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestMetricsRequestHandler_HandleRequest(t *testing.T) {
+	type want struct {
+		code        int
+		response    string
+		contentType string
+	}
+	tests := []struct {
+		name   string
+		target string
+		want   want
+	}{
+		{
+			name:   "positive test",
+			target: "/request",
+			want: want{
+				code:        200,
+				response:    "{\"GaugeMetrics\":{},\"CounterMetrics\":{}}",
+				contentType: "application/json",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, tt.target, nil)
+			w := httptest.NewRecorder()
+			NewMetricsRequestHandler(storage.NewGaugeMetricRepository(), storage.NewCounterMetricRepository()).HandleRequest(w, request)
+
+			res := w.Result()
+			assert.Equal(t, tt.want.code, res.StatusCode)
+			defer res.Body.Close()
+			resBody, err := io.ReadAll(res.Body)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want.response, string(resBody))
+			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
