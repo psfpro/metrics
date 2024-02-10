@@ -1,0 +1,46 @@
+### Ping
+GET http://localhost:8080/ping
+
+### Get metrics data
+GET http://localhost:8080/metrics
+Accept: application/json
+
+### Update Gauge
+POST http://localhost:8080/update/gauge/someMetric/527
+Content-Type: text/plain
+
+### Update Counter
+POST http://localhost:8080/update/counter/someMetric/527
+Content-Type: text/plain
+
+### Increase Counter
+POST http://localhost:8080/update/counter/someMetric
+Content-Type: text/plain
+
+### Update Gauge Json
+POST http://localhost:8080/update
+Content-Type: application/json
+
+{"id":"someMetric","type":"gauge","value":1.1}
+
+### Update Counter Json
+POST http://localhost:8080/update/counter/someMetric/527
+Content-Type: application/json
+
+{"id":"someMetric","type":"counter","value":1}
+
+### Increase Counter Json
+POST http://localhost:8080/update/counter/someMetric
+Content-Type: application/json
+
+{"id":"someMetric","type":"counter"}
+
+### Update metrics Json
+POST http://localhost:8080/updates/
+Content-Type: application/json
+HashSHA256: 46d6f5b3462f11d0603d6d3cdae0b6c1b46a5e99109d43ada717bd466ff70836
+
+[
+  {"id":"someMetric","type":"gauge","value":1.1},
+  {"id":"someMetric","type":"counter","value":1}
+]
