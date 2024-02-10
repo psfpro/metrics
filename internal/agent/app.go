@@ -8,16 +8,22 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/psfpro/metrics/internal/agent/model"
+	"github.com/shirou/gopsutil/v3/cpu"
 	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
+	"strconv"
 	"time"
+
+	"github.com/shirou/gopsutil/v3/mem"
+
+	"github.com/psfpro/metrics/internal/agent/model"
 )
 
 type App struct {
-	config *Config
+	config    *Config
+	pollCount int64
 }
 
 func NewApp(config *Config) *App {
@@ -27,46 +33,35 @@ func NewApp(config *Config) *App {
 }
 
 func (obj *App) Run() {
-	pollCount := int64(0)
-	lastReportTime := time.Now()
+	collectJobs := make(chan int, obj.config.RateLimit)
+	collectResults := make(chan []model.Metrics, obj.config.RateLimit)
+	sendResults := make(chan error, obj.config.RateLimit)
 
+	defer close(collectJobs)
+
+	// создаем и запускаем 3 воркера, это и есть пул,
+	// передаем id, это для наглядности, канал задач и канал результатов
+	for w := 1; w <= 3; w++ {
+		go obj.collect(w, collectJobs, collectResults)
+	}
+	for w := 1; w <= 3; w++ {
+		go obj.send(w, collectResults, sendResults)
+	}
+
+	ticker := time.NewTicker(obj.config.PollInterval)
 	for {
-		metrics := obj.collectMetrics()
-		metrics["RandomValue"] = rand.Float64()
-		pollCount++
-		if time.Since(lastReportTime) >= obj.config.ReportInterval {
-			err := obj.sendBatchMetrics(metrics, pollCount)
+		select {
+		case <-ticker.C:
+			collectJobs <- 1
+		case err := <-sendResults:
 			if err != nil {
 				log.Printf("Ошибка отправки метрик: %v", err)
 			}
-			lastReportTime = time.Now()
 		}
-
-		log.Printf("Ждем интервал для сбора %v\n", obj.config.PollInterval)
-		time.Sleep(obj.config.PollInterval)
 	}
 }
 
-func (obj *App) sendMetrics(metrics map[string]float64, pollCount int64) {
-	log.Println("Отправка всех собранных метрик")
-	for name, value := range metrics {
-		metric := obj.gaugeMetric(name, &value)
-		obj.send(metric)
-	}
-
-	log.Println("Отправка метрики PollCount")
-	metric := obj.counterMetric("PollCount", &pollCount)
-	obj.send(metric)
-}
-
-func (obj *App) sendBatchMetrics(metrics map[string]float64, pollCount int64) error {
-	var batch []model.Metrics
-	log.Println("Отправка всех собранных метрик")
-	for name, value := range metrics {
-		batch = append(batch, obj.gaugeMetric(name, &value))
-	}
-	batch = append(batch, obj.counterMetric("PollCount", &pollCount))
-
+func (obj *App) sendBatchMetrics(batch []model.Metrics) error {
 	var err error
 	retryDelays := []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 
@@ -117,45 +112,12 @@ func (obj *App) collectMetrics() map[string]float64 {
 	}
 }
 
-func (obj *App) sendMetric(metricType, name string, value interface{}) {
-	urlString := fmt.Sprintf("%s/update/%s/%s/%v", obj.config.ServerAddress, metricType, name, value)
-	resp, err := http.Post(urlString, "text/plain", nil)
-	if err != nil {
-		log.Printf("Error sending metric: %s\n", err)
-		return
-	}
-	defer resp.Body.Close()
-}
-
 func (obj *App) gaugeMetric(name string, value *float64) model.Metrics {
 	return model.Metrics{ID: name, MType: "gauge", Value: value}
 }
 
 func (obj *App) counterMetric(name string, value *int64) model.Metrics {
 	return model.Metrics{ID: name, MType: "counter", Delta: value}
-}
-
-func (obj *App) send(metric model.Metrics) {
-	reqBytes, err := json.Marshal(metric)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	urlString := fmt.Sprintf("%s/update", obj.config.ServerAddress)
-	body, err := obj.compress(reqBytes)
-	if err != nil {
-		log.Printf("Error compress metric: %s\n", err)
-		return
-	}
-	request, _ := http.NewRequest("POST", urlString, &body)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Content-Encoding", "gzip")
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		log.Printf("Error sending metric: %s\n", err)
-		return
-	}
-	defer resp.Body.Close()
 }
 
 func (obj *App) sendBatch(metric []model.Metrics) error {
@@ -200,4 +162,72 @@ func (obj *App) compress(data []byte) (bytes.Buffer, error) {
 	}
 
 	return b, nil
+}
+
+func (obj *App) collect(id int, jobs <-chan int, results chan<- []model.Metrics) {
+	for j := range jobs {
+		log.Println("collect", id, "start", j)
+		metrics := obj.collectMetrics()
+		metrics["RandomValue"] = rand.Float64()
+		obj.pollCount++
+		var batch []model.Metrics
+		for name, value := range metrics {
+			batch = append(batch, obj.gaugeMetric(name, &value))
+		}
+		batch = append(batch, obj.counterMetric("PollCount", &obj.pollCount))
+		log.Println("collect", id, "end", j)
+		results <- batch
+	}
+}
+func (obj *App) psutil(id int, jobs <-chan int, results chan<- []model.Metrics) {
+	for j := range jobs {
+		log.Println("psutil", id, "start", j)
+		v, _ := mem.VirtualMemory()
+		totalMemory := float64(v.Total)
+		freeMemory := float64(v.Free)
+		cpuPercentages, _ := cpu.Percent(time.Second, true)
+		var batch []model.Metrics
+		batch = append(batch, obj.gaugeMetric("TotalMemory", &totalMemory))
+		batch = append(batch, obj.gaugeMetric("FreeMemory", &freeMemory))
+		for i, percent := range cpuPercentages {
+			batch = append(batch, obj.gaugeMetric("CPUtilization"+strconv.Itoa(i), &percent))
+		}
+		log.Println("psutil", id, "end", j)
+		results <- batch
+	}
+}
+
+func (obj *App) send(id int, jobs <-chan []model.Metrics, results chan<- error) {
+	dataForSend := make(map[string]model.Metrics)
+	ticker := time.NewTicker(obj.config.ReportInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case j, ok := <-jobs:
+			if !ok {
+				log.Printf("send %d stopping\n", id)
+				return
+			}
+			log.Printf("send %d starting task\n", id)
+			for _, value := range j {
+				dataForSend[value.ID] = value
+			}
+		case <-ticker.C:
+			if len(dataForSend) == 0 {
+				continue
+			}
+			log.Printf("send %d performing action\n", id)
+			var values []model.Metrics
+			for _, value := range dataForSend {
+				values = append(values, value)
+			}
+			err := obj.sendBatchMetrics(values)
+			if err == nil {
+				dataForSend = make(map[string]model.Metrics)
+			}
+
+			results <- err
+		}
+	}
 }

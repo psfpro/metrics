@@ -15,6 +15,7 @@ func main() {
 		ServerAddress:  "http://" + flagRunAddr,
 		PollInterval:   time.Duration(flagPollInterval) * time.Second,
 		ReportInterval: time.Duration(flagReportInterval) * time.Second,
+		RateLimit:      rateLimit,
 	})
 	app.Run()
 }
@@ -24,6 +25,7 @@ var hashKey string
 var flagRunAddr string
 var flagReportInterval int
 var flagPollInterval int
+var rateLimit int
 
 // parseFlags обрабатывает аргументы командной строки
 // и сохраняет их значения в соответствующих переменных
@@ -32,6 +34,7 @@ func parseFlags() {
 	flag.StringVar(&flagRunAddr, "a", ":8080", "address and port to run server")
 	flag.IntVar(&flagReportInterval, "r", 10, "frequency of sending metrics to the server")
 	flag.IntVar(&flagPollInterval, "p", 2, "metrics polling rate")
+	flag.IntVar(&rateLimit, "l", 2, "rete limit")
 	flag.Parse()
 	if envHashKey := os.Getenv("KEY"); envHashKey != "" {
 		hashKey = envHashKey
@@ -44,5 +47,8 @@ func parseFlags() {
 	}
 	if envPollInterval := os.Getenv("POLL_INTERVAL"); envPollInterval != "" {
 		flagPollInterval, _ = strconv.Atoi(envPollInterval)
+	}
+	if envRateLimit := os.Getenv("RATE_LIMIT"); envRateLimit != "" {
+		rateLimit, _ = strconv.Atoi(envRateLimit)
 	}
 }
