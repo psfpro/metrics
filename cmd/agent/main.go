@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
-	"github.com/psfpro/metrics/internal/agent"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/psfpro/metrics/internal/agent"
 )
 
 func main() {

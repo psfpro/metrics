@@ -2,10 +2,11 @@ package handler
 
 import (
 	"fmt"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type MetricsListRequestHandler struct {

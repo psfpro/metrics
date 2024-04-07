@@ -1,11 +1,13 @@
 package handler
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type GetMetricValueRequestHandler struct {

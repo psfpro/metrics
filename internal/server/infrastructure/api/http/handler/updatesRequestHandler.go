@@ -1,11 +1,13 @@
 package handler
 
 import (
-	"github.com/mailru/easyjson"
-	"github.com/psfpro/metrics/internal/server/application"
-	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 	"log"
 	"net/http"
+
+	"github.com/mailru/easyjson"
+
+	"github.com/psfpro/metrics/internal/server/application"
+	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 )
 
 type UpdatesRequestHandler struct {

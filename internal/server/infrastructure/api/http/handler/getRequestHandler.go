@@ -2,11 +2,13 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/mailru/easyjson"
-	"github.com/psfpro/metrics/internal/server/domain"
-	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 	"log"
 	"net/http"
+
+	"github.com/mailru/easyjson"
+
+	"github.com/psfpro/metrics/internal/server/domain"
+	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 )
 
 type GetRequestHandler struct {

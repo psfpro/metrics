@@ -9,6 +9,9 @@ test: clear vet build-server build-agent metrics-test
 clear:
 	clear
 
+fmt:
+	goimports -local "github.com/psfpro/metrics" -w ./
+
 vet:
 	go vet ./...
 

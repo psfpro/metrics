@@ -3,17 +3,17 @@ package server
 import (
 	"context"
 	"database/sql"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 	"log"
 	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/psfpro/metrics/internal/server/application"
 	"github.com/psfpro/metrics/internal/server/infrastructure/api/http"
 	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/handler"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 )
 
 type Container struct {

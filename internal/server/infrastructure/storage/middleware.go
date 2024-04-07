@@ -3,11 +3,12 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgconn"
 	"log"
 	"net/http"
 	"reflect"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Middleware struct {

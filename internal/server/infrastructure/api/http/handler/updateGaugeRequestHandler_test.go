@@ -3,15 +3,17 @@ package handler
 import (
 	"bytes"
 	"context"
-	"github.com/go-chi/chi/v5"
-	"github.com/psfpro/metrics/internal/server/application"
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/psfpro/metrics/internal/server/application"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 )
 
 func TestUpdateGaugeRequestHandler_HandleRequest(t *testing.T) {
