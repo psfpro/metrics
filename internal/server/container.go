@@ -43,12 +43,11 @@ func NewContainer() *Container {
 	}
 
 	db, err := sql.Open("pgx", config.databaseDsn.String())
-	pingErr := db.Ping()
 	if err != nil {
 		log.Printf("Storage adapter DB error: %v", err)
 	}
-	if pingErr != nil {
-		log.Printf("Storage adapter DB error: %v", pingErr)
+	if err := db.Ping(); err != nil {
+		log.Printf("Storage adapter DB error: %v", err)
 	} else {
 		log.Printf("Storage adapter DB")
 		storageAdapter = storage.NewDBAdapter(db, counterMetricRepository, gaugeMetricRepository)
@@ -89,6 +88,7 @@ func NewContainer() *Container {
 
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, handler.Compressor, handler.Logger, middleware.Logger, hashCheckerMiddleware.Check, storageMiddleware.Handle, middleware.Recoverer)
+	router.Mount("/debug", middleware.Profiler())
 	router.Get(`/`, metricsListRequestHandler.HandleRequest)
 	router.Get(`/ping`, pingRequestHandler.HandleRequest)
 	router.Get(`/metrics`, metricsRequestHandler.HandleRequest)
