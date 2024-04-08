@@ -2,7 +2,7 @@ package application
 
 import "github.com/psfpro/metrics/internal/server/domain"
 
-// UpdateGaugeMetricHandler Обновление gauge метрики
+// UpdateGaugeMetricHandler implements gauge metric update.
 type UpdateGaugeMetricHandler struct {
 	Repository domain.GaugeMetricRepository
 }

@@ -1,3 +1,4 @@
+// Package model provides the data structures used to interact with the HTTP API endpoints.
 package model
 
 type Metrics struct {
