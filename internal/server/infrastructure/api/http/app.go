@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// App represents HTTP application.
 type App struct {
 	addr   string
 	router http.Handler
@@ -17,6 +18,7 @@ func NewApp(addr string, router http.Handler) *App {
 	}
 }
 
+// Run listen and serve HTTP requests.
 func (obj *App) Run() {
 	log.Printf("Start server addr: %v", obj.addr)
 	err := http.ListenAndServe(obj.addr, obj.router)

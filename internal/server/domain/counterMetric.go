@@ -1,7 +1,8 @@
 package domain
 
-// CounterMetric Тип counter, int64 — новое значение должно добавляться к предыдущему,
-// если какое-то значение уже было известно серверу.
+// CounterMetric implements counter metric.
+//
+// Type int64 — new value should be added to the previous value if some value was already known to the server.
 type CounterMetric struct {
 	name  string
 	value int64

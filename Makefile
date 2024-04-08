@@ -9,6 +9,11 @@ test: clear vet build-server build-agent metrics-test
 clear:
 	clear
 
+fmt:
+	goimports -local "github.com/psfpro/metrics" -w ./
+doc:
+	godoc -http=:8080 -play && http://localhost:8080/pkg/github.com/psfpro/metrics/internal/?m=all
+
 vet:
 	go vet ./...
 

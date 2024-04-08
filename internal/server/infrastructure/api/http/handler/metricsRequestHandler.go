@@ -2,9 +2,10 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
 	"net/http"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type MetricsRequestHandler struct {

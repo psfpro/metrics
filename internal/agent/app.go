@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/shirou/gopsutil/v3/cpu"
 	"log"
 	"math/rand"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 
 	"github.com/psfpro/metrics/internal/agent/model"

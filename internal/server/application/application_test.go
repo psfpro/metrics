@@ -1,9 +1,10 @@
 package application
 
 import (
+	"testing"
+
 	"github.com/psfpro/metrics/internal/server/domain"
 	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
-	"testing"
 )
 
 func TestIncreaseCounterMetricHandler_Handle(t *testing.T) {

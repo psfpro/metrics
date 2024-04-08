@@ -1,11 +1,13 @@
 package handler
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/psfpro/metrics/internal/server/application"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/psfpro/metrics/internal/server/application"
 )
 
 type UpdateGaugeRequestHandler struct {

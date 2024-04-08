@@ -3,9 +3,11 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"github.com/gofrs/uuid"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
+
+	"github.com/gofrs/uuid"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type DBAdapter struct {
