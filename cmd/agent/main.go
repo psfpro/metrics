@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -9,7 +10,17 @@ import (
 	"github.com/psfpro/metrics/internal/agent"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
+	fmt.Printf(
+		"Build version: %s\nBuild date: %s\nBuild commit: %s\n\n",
+		getString(buildVersion), getString(buildDate), getString(buildCommit),
+	)
 	parseFlags()
 	app := agent.NewApp(&agent.Config{
 		HashKey:        hashKey,
@@ -52,4 +63,11 @@ func parseFlags() {
 	if envRateLimit := os.Getenv("RATE_LIMIT"); envRateLimit != "" {
 		rateLimit, _ = strconv.Atoi(envRateLimit)
 	}
+}
+
+func getString(s string) string {
+	if s == "" {
+		return "N/A"
+	}
+	return s
 }

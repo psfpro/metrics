@@ -26,6 +26,12 @@ build-server:
 build-agent:
 	cd cmd/agent && go build -buildvcs=false  -o agent
 
+run-server:
+	cd cmd/server && go run -ldflags "-X main.buildVersion=v1.0.0 -X 'main.buildDate=$$(date +'%Y/%m/%d %H:%M:%S')' -X 'main.buildCommit=$$(git rev-parse HEAD)'" main.go
+
+run-agent:
+	cd cmd/agent && go run -ldflags "-X main.buildVersion=v1.0.0 -X 'main.buildDate=$$(date +'%Y/%m/%d %H:%M:%S')' -X 'main.buildCommit=$$(git rev-parse HEAD)'" main.go
+
 metrics-test:
 	metricstest -test.v -test.run=^TestIteration14$$ \
                 -source-path=. \
