@@ -2,13 +2,15 @@ package handler
 
 import (
 	"bytes"
-	"go.uber.org/zap"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"reflect"
 	"runtime"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type (
@@ -39,7 +41,12 @@ func Logger(next http.Handler) http.Handler {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync()
+	defer func() {
+		err = logger.Sync()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	sugar := *logger.Sugar()
 

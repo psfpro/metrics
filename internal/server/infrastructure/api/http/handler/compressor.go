@@ -25,10 +25,12 @@ func Compressor(next http.Handler) http.Handler {
 			body := r.Body
 			bodyBytes, err := gzip.NewReader(body)
 			if err != nil {
-				io.WriteString(w, err.Error())
+				_, err = io.WriteString(w, err.Error())
 				return
 			}
-			defer bodyBytes.Close()
+			defer func() {
+				err = body.Close()
+			}()
 			r.Body = io.NopCloser(bodyBytes)
 		}
 
@@ -39,10 +41,12 @@ func Compressor(next http.Handler) http.Handler {
 			w.Header().Set("Content-Encoding", "gzip")
 			gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 			if err != nil {
-				io.WriteString(w, err.Error())
+				_, err = io.WriteString(w, err.Error())
 				return
 			}
-			defer gz.Close()
+			defer func() {
+				err = gz.Close()
+			}()
 
 			encoderWriter := encoderResponseWriter{
 				ResponseWriter: w,

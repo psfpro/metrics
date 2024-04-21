@@ -1,13 +1,15 @@
 package handler
 
 import (
-	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 )
 
 func TestMetricsRequestHandler_HandleRequest(t *testing.T) {
@@ -39,7 +41,10 @@ func TestMetricsRequestHandler_HandleRequest(t *testing.T) {
 
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode)
-			defer res.Body.Close()
+			defer func() {
+				err := res.Body.Close()
+				assert.NoError(t, err)
+			}()
 			resBody, err := io.ReadAll(res.Body)
 
 			require.NoError(t, err)

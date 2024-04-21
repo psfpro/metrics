@@ -2,10 +2,13 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/psfpro/metrics/internal/server/domain"
-	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 	"log"
 	"net/http"
+
+	"github.com/mailru/easyjson"
+
+	"github.com/psfpro/metrics/internal/server/domain"
+	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 )
 
 type GetRequestHandler struct {
@@ -22,7 +25,7 @@ func (obj *GetRequestHandler) HandleRequest(response http.ResponseWriter, reques
 	if request.Method == http.MethodPost {
 		var metrics model.Metrics
 
-		if err := json.NewDecoder(request.Body).Decode(&metrics); err != nil {
+		if err := easyjson.UnmarshalFromReader(request.Body, &metrics); err != nil {
 			http.Error(response, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -43,7 +46,10 @@ func (obj *GetRequestHandler) HandleRequest(response http.ResponseWriter, reques
 
 				response.Header().Set("Content-Type", "application/json")
 				response.WriteHeader(http.StatusOK)
-				response.Write(jsonData)
+				_, err = response.Write(jsonData)
+				if err != nil {
+					log.Fatalf("Error writing response. Error: %s", err.Error())
+				}
 				return
 			}
 		} else if metrics.MType == "counter" {
@@ -59,7 +65,10 @@ func (obj *GetRequestHandler) HandleRequest(response http.ResponseWriter, reques
 
 				response.Header().Set("Content-Type", "application/json")
 				response.WriteHeader(http.StatusOK)
-				response.Write(jsonData)
+				_, err = response.Write(jsonData)
+				if err != nil {
+					log.Fatalf("Error writing response. Error: %s", err.Error())
+				}
 				return
 			}
 		}

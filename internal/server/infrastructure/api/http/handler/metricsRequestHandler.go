@@ -2,9 +2,10 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
 	"net/http"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type MetricsRequestHandler struct {
@@ -68,5 +69,8 @@ func (obj *MetricsRequestHandler) HandleRequest(response http.ResponseWriter, re
 
 	response.Header().Set("Content-Type", "application/json")
 	response.WriteHeader(http.StatusOK)
-	response.Write(jsonData)
+	_, err = response.Write(jsonData)
+	if err != nil {
+		log.Fatalf("Error writing response. Error: %s", err.Error())
+	}
 }

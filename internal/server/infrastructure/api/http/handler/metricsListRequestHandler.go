@@ -2,10 +2,11 @@ package handler
 
 import (
 	"fmt"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type MetricsListRequestHandler struct {
@@ -45,5 +46,8 @@ func (obj *MetricsListRequestHandler) HandleRequest(response http.ResponseWriter
 	</body>
 </html>`
 	response.Header().Set("Content-Type", "text/html")
-	response.Write([]byte(body))
+	_, err := response.Write([]byte(body))
+	if err != nil {
+		log.Println("Error writing response:", err)
+	}
 }

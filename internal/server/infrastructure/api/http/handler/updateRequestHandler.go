@@ -1,11 +1,13 @@
 package handler
 
 import (
-	"encoding/json"
-	"github.com/psfpro/metrics/internal/server/application"
-	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 	"log"
 	"net/http"
+
+	"github.com/mailru/easyjson"
+
+	"github.com/psfpro/metrics/internal/server/application"
+	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/model"
 )
 
 type UpdateRequestHandler struct {
@@ -23,7 +25,7 @@ func (obj *UpdateRequestHandler) HandleRequest(response http.ResponseWriter, req
 	if request.Method == http.MethodPost {
 		var metrics model.Metrics
 
-		if err := json.NewDecoder(request.Body).Decode(&metrics); err != nil {
+		if err := easyjson.UnmarshalFromReader(request.Body, &metrics); err != nil {
 			http.Error(response, err.Error(), http.StatusBadRequest)
 			return
 		}

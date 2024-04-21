@@ -1,6 +1,8 @@
 package domain
 
-// GaugeMetric Тип gauge, float64 — новое значение должно замещать предыдущее.
+// GaugeMetric implements gauge metric.
+//
+// Type float64 — new value replaces previous.
 type GaugeMetric struct {
 	name  string
 	value float64

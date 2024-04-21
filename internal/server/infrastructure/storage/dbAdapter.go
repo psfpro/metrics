@@ -3,9 +3,11 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"github.com/gofrs/uuid"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
+
+	"github.com/gofrs/uuid"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type DBAdapter struct {
@@ -18,12 +20,14 @@ func NewDBAdapter(db *sql.DB, counterMetricRepository *CounterMetricRepository, 
 	return &DBAdapter{db: db, counterMetricRepository: counterMetricRepository, gaugeMetricRepository: gaugeMetricRepository}
 }
 
-func (a *DBAdapter) Flush(ctx context.Context) error {
+func (a *DBAdapter) Flush(ctx context.Context) (err error) {
 	tx, err := a.db.Begin()
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		err = tx.Rollback()
+	}()
 
 	saveGaugeMetricQuery := `
 INSERT INTO gauge_metric (id, metric_name, metric_value)
@@ -35,7 +39,9 @@ DO UPDATE SET
     recorded_at = CURRENT_TIMESTAMP
 `
 	saveGaugeMetricStmt, _ := tx.PrepareContext(ctx, saveGaugeMetricQuery)
-	defer saveGaugeMetricStmt.Close()
+	defer func() {
+		err = saveGaugeMetricStmt.Close()
+	}()
 	saveCounterMetricQuery := `
 INSERT INTO counter_metric (id, metric_name, metric_value)
 VALUES ($1, $2, $3)
@@ -46,7 +52,9 @@ DO UPDATE SET
     recorded_at = CURRENT_TIMESTAMP
 `
 	saveCounterMetricStmt, _ := tx.PrepareContext(ctx, saveCounterMetricQuery)
-	defer saveCounterMetricStmt.Close()
+	defer func() {
+		err = saveCounterMetricStmt.Close()
+	}()
 
 	for _, v := range a.gaugeMetricRepository.data {
 		_, err := saveGaugeMetricStmt.ExecContext(ctx, a.uuidByName(v.Name()).String(), v.Name(), v.Value())
@@ -63,7 +71,7 @@ DO UPDATE SET
 	return tx.Commit()
 }
 
-func (a *DBAdapter) Restore(ctx context.Context) error {
+func (a *DBAdapter) Restore(ctx context.Context) (err error) {
 	createGaugeMetricTableQuery := `
 CREATE TABLE IF NOT EXISTS gauge_metric (
     id UUID PRIMARY KEY,
@@ -80,8 +88,8 @@ CREATE TABLE IF NOT EXISTS counter_metric (
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `
-	a.db.ExecContext(context.TODO(), createGaugeMetricTableQuery)
-	a.db.ExecContext(context.TODO(), createCounterMetricTableQuery)
+	_, err = a.db.ExecContext(context.TODO(), createGaugeMetricTableQuery)
+	_, err = a.db.ExecContext(context.TODO(), createCounterMetricTableQuery)
 	a.gaugeMetricRepository.data = make(map[string]*domain.GaugeMetric)
 	a.counterMetricRepository.data = make(map[string]*domain.CounterMetric)
 
@@ -90,7 +98,9 @@ CREATE TABLE IF NOT EXISTS counter_metric (
 	if err != nil {
 		return err
 	}
-	defer gaugeRows.Close()
+	defer func() {
+		err = gaugeRows.Close()
+	}()
 
 	for gaugeRows.Next() {
 		var name string
@@ -112,7 +122,9 @@ CREATE TABLE IF NOT EXISTS counter_metric (
 	if err2 != nil {
 		return err2
 	}
-	defer counterRows.Close()
+	defer func() {
+		err = counterRows.Close()
+	}()
 
 	for counterRows.Next() {
 		var name string

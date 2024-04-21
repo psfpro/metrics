@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/shirou/gopsutil/v3/cpu"
 	"log"
 	"math/rand"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 
 	"github.com/psfpro/metrics/internal/agent/model"
@@ -120,7 +120,7 @@ func (obj *App) counterMetric(name string, value *int64) model.Metrics {
 	return model.Metrics{ID: name, MType: "counter", Delta: value}
 }
 
-func (obj *App) sendBatch(metric []model.Metrics) error {
+func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 	reqBytes, err := json.Marshal(metric)
 	if err != nil {
 		fmt.Println(err)
@@ -144,7 +144,9 @@ func (obj *App) sendBatch(metric []model.Metrics) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+	}()
 	return nil
 }
 

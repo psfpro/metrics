@@ -2,7 +2,7 @@ package application
 
 import "github.com/psfpro/metrics/internal/server/domain"
 
-// IncreaseCounterMetricHandler Обновление counter метрики
+// IncreaseCounterMetricHandler implements counter metric increase.
 type IncreaseCounterMetricHandler struct {
 	Repository domain.CounterMetricRepository
 }

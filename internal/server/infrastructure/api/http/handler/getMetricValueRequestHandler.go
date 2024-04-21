@@ -1,11 +1,13 @@
 package handler
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/psfpro/metrics/internal/server/domain"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/psfpro/metrics/internal/server/domain"
 )
 
 type GetMetricValueRequestHandler struct {
@@ -27,7 +29,10 @@ func (obj *GetMetricValueRequestHandler) HandleRequest(response http.ResponseWri
 		if exist {
 			body := strconv.FormatInt(metric.Value(), 10)
 			log.Printf("Get %v %v: %v\n", metricType, metricName, body)
-			response.Write([]byte(body))
+			_, err := response.Write([]byte(body))
+			if err != nil {
+				log.Printf("Error writing to response for %v: %v\n", metricType, err)
+			}
 			return
 		}
 	} else if metricType == "gauge" && metricName != "" {
@@ -35,7 +40,10 @@ func (obj *GetMetricValueRequestHandler) HandleRequest(response http.ResponseWri
 		if exist {
 			body := strconv.FormatFloat(metric.Value(), 'f', -1, 64)
 			log.Printf("Get %v %v: %v\n", metricType, metricName, body)
-			response.Write([]byte(body))
+			_, err := response.Write([]byte(body))
+			if err != nil {
+				log.Printf("Error writing to response for %v: %v\n", metricType, err)
+			}
 			return
 		}
 	}

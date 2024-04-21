@@ -2,12 +2,16 @@ package handler
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/psfpro/metrics/internal/server/application"
+	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 )
 
 func TestUpdateRequestHandler_HandleRequest(t *testing.T) {
@@ -72,12 +76,42 @@ func TestUpdateRequestHandler_HandleRequest(t *testing.T) {
 
 			res, _ := ts.Client().Do(request)
 			assert.Equal(t, tt.want.code, res.StatusCode)
-			defer res.Body.Close()
+			defer func() {
+				err = res.Body.Close()
+				assert.NoError(t, err)
+			}()
 			resBody, err := io.ReadAll(res.Body)
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.want.response, string(resBody))
 			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
 		})
+	}
+}
+
+func BenchmarkUpdateRequestHandler_HandleRequest(b *testing.B) {
+	const triesN = 1000
+	gaugeMetricRepository := storage.NewGaugeMetricRepository()
+	counterMetricRepository := storage.NewCounterMetricRepository()
+	updateGaugeMetricHandler := &application.UpdateGaugeMetricHandler{
+		Repository: gaugeMetricRepository,
+	}
+	updateCounterMetricHandler := &application.UpdateCounterMetricHandler{
+		Repository: counterMetricRepository,
+	}
+	increaseCounterMetricHandler := &application.IncreaseCounterMetricHandler{
+		Repository: counterMetricRepository,
+	}
+	updateRequestHandler := NewUpdateRequestHandler(updateGaugeMetricHandler, updateCounterMetricHandler, increaseCounterMetricHandler)
+	slice := make([]*http.Request, triesN)
+	for i := 0; i < triesN; i++ {
+		request, _ := http.NewRequest(http.MethodPost, "/update", bytes.NewBufferString(`{"id": "1", "type": "gauge", "value": 1.1}`))
+		slice[i] = request
+	}
+	w := httptest.NewRecorder()
+	b.ResetTimer()
+
+	for i := 0; i < triesN; i++ {
+		updateRequestHandler.HandleRequest(w, slice[i])
 	}
 }
