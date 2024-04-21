@@ -54,14 +54,20 @@ func TestGetRequestHandler_HandleRequest(t *testing.T) {
 			updateRequest, _ := http.NewRequest(http.MethodPost, ts.URL+"/update", bytes.NewBufferString(tt.updateBody))
 			resUpdate, _ := ts.Client().Do(updateRequest)
 			assert.Equal(t, http.StatusOK, resUpdate.StatusCode)
-			defer resUpdate.Body.Close()
+			defer func() {
+				err := resUpdate.Body.Close()
+				assert.NoError(t, err)
+			}()
 
 			request, err := http.NewRequest(http.MethodPost, ts.URL+tt.target, bytes.NewBufferString(tt.body))
 			require.NoError(t, err)
 
 			res, _ := ts.Client().Do(request)
 			assert.Equal(t, tt.want.code, res.StatusCode)
-			defer res.Body.Close()
+			defer func() {
+				err = res.Body.Close()
+				assert.NoError(t, err)
+			}()
 			resBody, err := io.ReadAll(res.Body)
 
 			require.NoError(t, err)

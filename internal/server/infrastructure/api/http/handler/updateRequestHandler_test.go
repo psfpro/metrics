@@ -76,7 +76,10 @@ func TestUpdateRequestHandler_HandleRequest(t *testing.T) {
 
 			res, _ := ts.Client().Do(request)
 			assert.Equal(t, tt.want.code, res.StatusCode)
-			defer res.Body.Close()
+			defer func() {
+				err = res.Body.Close()
+				assert.NoError(t, err)
+			}()
 			resBody, err := io.ReadAll(res.Body)
 
 			require.NoError(t, err)

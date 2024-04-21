@@ -46,7 +46,8 @@ func NewContainer() *Container {
 	if err != nil {
 		log.Printf("Storage adapter DB error: %v", err)
 	}
-	if err := db.Ping(); err != nil {
+	err = db.Ping()
+	if err != nil {
 		log.Printf("Storage adapter DB error: %v", err)
 	} else {
 		log.Printf("Storage adapter DB")

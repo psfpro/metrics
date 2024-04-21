@@ -46,5 +46,8 @@ func (obj *MetricsListRequestHandler) HandleRequest(response http.ResponseWriter
 	</body>
 </html>`
 	response.Header().Set("Content-Type", "text/html")
-	response.Write([]byte(body))
+	_, err := response.Write([]byte(body))
+	if err != nil {
+		log.Println("Error writing response:", err)
+	}
 }

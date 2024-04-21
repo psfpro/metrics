@@ -19,7 +19,10 @@ type Config struct {
 
 func NewConfig() *Config {
 	address := &NetAddress{}
-	address.Set(":8080")
+	err := address.Set(":8080")
+	if err != nil {
+		panic(err)
+	}
 	databaseDsn := &DatabaseDsn{}
 	_ = flag.Value(address)
 	_ = flag.Value(databaseDsn)
@@ -31,10 +34,16 @@ func NewConfig() *Config {
 	flag.Var(databaseDsn, "d", "Database DSN")
 	flag.Parse()
 	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		address.Set(envRunAddr)
+		err = address.Set(envRunAddr)
+		if err != nil {
+			panic(err)
+		}
 	}
 	if envDatabaseDsn := os.Getenv("DATABASE_DSN"); envDatabaseDsn != "" {
-		databaseDsn.Set(envDatabaseDsn)
+		err = databaseDsn.Set(envDatabaseDsn)
+		if err != nil {
+			panic(err)
+		}
 	}
 	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
 		i, _ := strconv.ParseInt(envStoreInterval, 10, 64)

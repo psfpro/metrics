@@ -120,7 +120,7 @@ func (obj *App) counterMetric(name string, value *int64) model.Metrics {
 	return model.Metrics{ID: name, MType: "counter", Delta: value}
 }
 
-func (obj *App) sendBatch(metric []model.Metrics) error {
+func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 	reqBytes, err := json.Marshal(metric)
 	if err != nil {
 		fmt.Println(err)
@@ -144,7 +144,9 @@ func (obj *App) sendBatch(metric []model.Metrics) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+	}()
 	return nil
 }
 

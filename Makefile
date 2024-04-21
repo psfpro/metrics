@@ -17,6 +17,9 @@ doc:
 vet:
 	go vet ./...
 
+staticlint:
+	go run ./cmd/staticlint ./...
+
 build-server:
 	cd cmd/server && go build -buildvcs=false -o server
 
