@@ -3,14 +3,22 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
-	"math/rand"
+	mathRand "math/rand"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -127,6 +135,39 @@ func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 		return err
 	}
 	urlString := fmt.Sprintf("%s/updates", obj.config.ServerAddress)
+	log.Println("crypto key: ", obj.config.CryptoKey)
+	if obj.config.CryptoKey != "" {
+		rsaPublicKey, err := loadRSAPublicKey(obj.config.CryptoKey)
+		if err != nil {
+			return err
+		}
+		// Generate a new AES key
+		aesKey := make([]byte, aes.BlockSize)
+		if _, err := rand.Read(aesKey); err != nil {
+			return err
+		}
+		// Encrypt the data with AES
+		blockCipher, err := aes.NewCipher(aesKey)
+		if err != nil {
+			return err
+		}
+		gcm, err := cipher.NewGCM(blockCipher)
+		if err != nil {
+			return err
+		}
+		nonce := make([]byte, gcm.NonceSize())
+		if _, err := rand.Read(nonce); err != nil {
+			return err
+		}
+		encryptedData := gcm.Seal(nil, nonce, reqBytes, nil)
+		// Encrypt the AES key with RSA
+		encryptedKey, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPublicKey, aesKey)
+		if err != nil {
+			return err
+		}
+		reqBytes = append(encryptedData, encryptedKey...)
+		reqBytes = append(reqBytes, nonce...)
+	}
 	body, err := obj.compress(reqBytes)
 	if err != nil {
 		return err
@@ -135,9 +176,9 @@ func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
 	if obj.config.HashKey != "" {
-		hmac := hmac.New(sha256.New, []byte(obj.config.HashKey))
-		hmac.Write(reqBytes)
-		signature := hex.EncodeToString(hmac.Sum(nil))
+		hash := hmac.New(sha256.New, []byte(obj.config.HashKey))
+		hash.Write(reqBytes)
+		signature := hex.EncodeToString(hash.Sum(nil))
 		request.Header.Set("HashSHA256", signature)
 	}
 	resp, err := http.DefaultClient.Do(request)
@@ -170,7 +211,7 @@ func (obj *App) collect(id int, jobs <-chan int, results chan<- []model.Metrics)
 	for j := range jobs {
 		log.Println("collect", id, "start", j)
 		metrics := obj.collectMetrics()
-		metrics["RandomValue"] = rand.Float64()
+		metrics["RandomValue"] = mathRand.Float64()
 		obj.pollCount++
 		var batch []model.Metrics
 		for name, value := range metrics {
@@ -232,4 +273,32 @@ func (obj *App) send(id int, jobs <-chan []model.Metrics, results chan<- error) 
 			results <- err
 		}
 	}
+}
+
+func loadRSAPublicKey(filename string) (*rsa.PublicKey, error) {
+	// Read the file containing the public key
+	keyData, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read public key file: %w", err)
+	}
+
+	// Decode the PEM data
+	block, _ := pem.Decode(keyData)
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil, errors.New("failed to decode PEM block containing public key")
+	}
+
+	// Parse the public key
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse public key: %w", err)
+	}
+
+	// Assert the type to *rsa.PublicKey
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an RSA public key")
+	}
+
+	return rsaPub, nil
 }

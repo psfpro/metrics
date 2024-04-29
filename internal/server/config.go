@@ -15,6 +15,7 @@ type Config struct {
 	restore         bool
 	databaseDsn     *DatabaseDsn
 	hashKey         string
+	cryptoKey       string
 }
 
 func NewConfig() *Config {
@@ -29,7 +30,8 @@ func NewConfig() *Config {
 	storeInterval := flag.Int64("i", 300, "Store interval")
 	fileStoragePath := flag.String("f", "/tmp/metrics-db.json", "File storage path")
 	restore := flag.Bool("r", true, "Restore")
-	hashKey := flag.String("k", "123", "Hash key")
+	hashKey := flag.String("k", "", "Hash key")
+	cryptoKey := flag.String("crypto-key", "", "crypto key")
 	flag.Var(address, "a", "Net serverAddress host:port")
 	flag.Var(databaseDsn, "d", "Database DSN")
 	flag.Parse()
@@ -59,6 +61,9 @@ func NewConfig() *Config {
 	if envHashKey := os.Getenv("KEY"); envHashKey != "" {
 		hashKey = &envHashKey
 	}
+	if envCryptoKey := os.Getenv("CRYPTO_KEY"); envCryptoKey != "" {
+		cryptoKey = &envCryptoKey
+	}
 
 	return &Config{
 		serverAddress:   address,
@@ -67,6 +72,7 @@ func NewConfig() *Config {
 		restore:         *restore,
 		databaseDsn:     databaseDsn,
 		hashKey:         *hashKey,
+		cryptoKey:       *cryptoKey,
 	}
 }
 
