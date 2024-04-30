@@ -26,7 +26,8 @@ func NewCryptoDecoder(cryptoKey string) *CryptoDecoder {
 
 func (h *CryptoDecoder) Decode(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		if h.cryptoKey != "" {
+		header := r.Header.Get("X-Encryption")
+		if header != "" && h.cryptoKey != "" {
 			bodyBytes, _ := io.ReadAll(r.Body)
 			privateKey, err := h.privateKey()
 			if err != nil {

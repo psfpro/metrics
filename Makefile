@@ -45,4 +45,4 @@ metrics-test:
                 -database-dsn='postgres://app:pass@localhost:5432/app?sslmode=disable' \
                 -key=123 \
                 -file-storage-path=tmp \
-                -server-port=8888
+                -server-port=8080

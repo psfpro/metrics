@@ -56,7 +56,7 @@ func (obj *App) Run() {
 		go obj.send(w, collectResults, sendResults)
 	}
 
-	ticker := time.NewTicker(obj.config.PollInterval)
+	ticker := time.NewTicker(time.Duration(obj.config.PollInterval) * time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -135,7 +135,7 @@ func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 		return err
 	}
 	urlString := fmt.Sprintf("%s/updates", obj.config.ServerAddress)
-	log.Println("crypto key: ", obj.config.CryptoKey)
+	var encryption string
 	if obj.config.CryptoKey != "" {
 		rsaPublicKey, err := loadRSAPublicKey(obj.config.CryptoKey)
 		if err != nil {
@@ -167,12 +167,16 @@ func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 		}
 		reqBytes = append(encryptedData, encryptedKey...)
 		reqBytes = append(reqBytes, nonce...)
+		encryption = "rsa"
 	}
 	body, err := obj.compress(reqBytes)
 	if err != nil {
 		return err
 	}
 	request, _ := http.NewRequest("POST", urlString, &body)
+	if encryption != "" {
+		request.Header.Set("X-Encryption", encryption)
+	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
 	if obj.config.HashKey != "" {
@@ -242,7 +246,7 @@ func (obj *App) psutil(id int, jobs <-chan int, results chan<- []model.Metrics) 
 
 func (obj *App) send(id int, jobs <-chan []model.Metrics, results chan<- error) {
 	dataForSend := make(map[string]model.Metrics)
-	ticker := time.NewTicker(obj.config.ReportInterval)
+	ticker := time.NewTicker(time.Duration(obj.config.ReportInterval) * time.Second)
 	defer ticker.Stop()
 
 	for {

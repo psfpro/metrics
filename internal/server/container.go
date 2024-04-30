@@ -34,7 +34,7 @@ func NewContainer() *Container {
 	var storageAdapter storage.Adapter
 	storageAdapter = storage.NewDumbAdapter()
 
-	file, err := os.OpenFile(config.fileStoragePath, os.O_RDWR|os.O_CREATE, 0666)
+	file, err := os.OpenFile(config.StoragePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		log.Printf("Storage adapter File error: %v", err)
 	} else {
@@ -42,7 +42,7 @@ func NewContainer() *Container {
 		storageAdapter = storage.NewFileAdapter(file, counterMetricRepository, gaugeMetricRepository)
 	}
 
-	db, err := sql.Open("pgx", config.databaseDsn.String())
+	db, err := sql.Open("pgx", config.DatabaseDsn)
 	if err != nil {
 		log.Printf("Storage adapter DB error: %v", err)
 	}
@@ -54,7 +54,7 @@ func NewContainer() *Container {
 		storageAdapter = storage.NewDBAdapter(db, counterMetricRepository, gaugeMetricRepository)
 	}
 
-	if config.restore {
+	if config.Restore {
 		err = storageAdapter.Restore(ctx)
 		if err != nil {
 			log.Printf("Storage restore error: %v", err)
@@ -63,8 +63,8 @@ func NewContainer() *Container {
 		}
 	}
 	storageMiddleware := storage.NewMiddleware(storageAdapter)
-	hashCheckerMiddleware := handler.NewHashChecker(config.hashKey)
-	cryptoDecoderMiddleware := handler.NewCryptoDecoder(config.cryptoKey)
+	hashCheckerMiddleware := handler.NewHashChecker(config.HashKey)
+	cryptoDecoderMiddleware := handler.NewCryptoDecoder(config.CryptoKey)
 
 	updateGaugeMetricHandler := &application.UpdateGaugeMetricHandler{
 		Repository: gaugeMetricRepository,
@@ -111,7 +111,7 @@ func NewContainer() *Container {
 	router.Get(`/value/{type}/{name}`, getMetricValueRequestHandler.HandleRequest)
 	router.NotFound(notFoundHandler.HandleRequest)
 
-	app := http.NewApp(config.serverAddress.String(), router)
+	app := http.NewApp(config.Address, router)
 
 	return &Container{
 		app: app,
