@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -19,8 +20,11 @@ import (
 	mathRand "math/rand"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -30,8 +34,12 @@ import (
 )
 
 type App struct {
-	config    *Config
-	pollCount int64
+	config       *Config
+	pollCount    int64
+	closer       context.CancelFunc
+	closed       chan struct{}
+	collectGroup sync.WaitGroup
+	sendGroup    sync.WaitGroup
 }
 
 func NewApp(config *Config) *App {
@@ -41,30 +49,82 @@ func NewApp(config *Config) *App {
 }
 
 func (obj *App) Run() {
+	obj.runWorkers()
+	obj.waitSignal()
+}
+
+func (obj *App) runWorkers() {
+	ctx, closer := context.WithCancel(context.Background())
+	obj.closer = closer
+	obj.closed = make(chan struct{})
+
 	collectJobs := make(chan int, obj.config.RateLimit)
 	collectResults := make(chan []model.Metrics, obj.config.RateLimit)
 	sendResults := make(chan error, obj.config.RateLimit)
+	// запускаем сбор метрик, ждем завершения воркеров и закрываем канал
+	go func() {
+		for w := 1; w <= 3; w++ {
+			obj.collectGroup.Add(1)
+			go obj.collect(w, collectJobs, collectResults)
+		}
+		obj.collectGroup.Wait()
+		close(collectResults)
+	}()
+	// запускаем отправку метрик, ждем завершения воркеров и закрываем канал
+	go func() {
+		for w := 1; w <= 3; w++ {
+			obj.sendGroup.Add(1)
+			go obj.send(w, collectResults, sendResults)
+		}
+		obj.sendGroup.Wait()
+		close(sendResults)
+		obj.closed <- struct{}{} // можно завершать приложение gracefully
+	}()
 
-	defer close(collectJobs)
+	go func() {
+		defer close(collectJobs)
+		ticker := time.NewTicker(time.Duration(obj.config.PollInterval) * time.Second)
+		for {
+			select {
+			case <-ctx.Done(): // Проверка на сигнал об отмене
+				return
+			case <-ticker.C:
+				collectJobs <- 1
+			}
+		}
+	}()
 
-	// создаем и запускаем 3 воркера, это и есть пул,
-	// передаем id, это для наглядности, канал задач и канал результатов
-	for w := 1; w <= 3; w++ {
-		go obj.collect(w, collectJobs, collectResults)
-	}
-	for w := 1; w <= 3; w++ {
-		go obj.send(w, collectResults, sendResults)
-	}
-
-	ticker := time.NewTicker(time.Duration(obj.config.PollInterval) * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			collectJobs <- 1
-		case err := <-sendResults:
+	go func() {
+		for {
+			err := <-sendResults
 			if err != nil {
 				log.Printf("Ошибка отправки метрик: %v", err)
 			}
+		}
+	}()
+}
+
+func (obj *App) waitSignal() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	sig := <-signalChan
+	signal.Stop(signalChan)
+	log.Printf("received signal %s, shutting down", sig.String())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	obj.shutdown(ctx)
+}
+
+func (obj *App) shutdown(ctx context.Context) {
+	obj.closer()
+	for {
+		select {
+		case <-obj.closed: // ждём завершения процедуры graceful shutdown
+			log.Println("shutdown gracefully")
+			return
+		case <-ctx.Done():
+			log.Println(ctx.Err())
+			return
 		}
 	}
 }
@@ -212,8 +272,8 @@ func (obj *App) compress(data []byte) (bytes.Buffer, error) {
 }
 
 func (obj *App) collect(id int, jobs <-chan int, results chan<- []model.Metrics) {
-	for j := range jobs {
-		log.Println("collect", id, "start", j)
+	for range jobs {
+		log.Println("collect", id)
 		metrics := obj.collectMetrics()
 		metrics["RandomValue"] = mathRand.Float64()
 		obj.pollCount++
@@ -222,9 +282,10 @@ func (obj *App) collect(id int, jobs <-chan int, results chan<- []model.Metrics)
 			batch = append(batch, obj.gaugeMetric(name, &value))
 		}
 		batch = append(batch, obj.counterMetric("PollCount", &obj.pollCount))
-		log.Println("collect", id, "end", j)
 		results <- batch
 	}
+	obj.collectGroup.Done()
+	log.Printf("collect %d stopping\n", id)
 }
 func (obj *App) psutil(id int, jobs <-chan int, results chan<- []model.Metrics) {
 	for j := range jobs {
@@ -254,6 +315,7 @@ func (obj *App) send(id int, jobs <-chan []model.Metrics, results chan<- error) 
 		case j, ok := <-jobs:
 			if !ok {
 				log.Printf("send %d stopping\n", id)
+				obj.sendGroup.Done()
 				return
 			}
 			log.Printf("send %d starting task\n", id)

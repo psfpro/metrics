@@ -3,13 +3,15 @@ package http
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"net/http"
 )
 
 func Example() {
 	router := chi.NewRouter()
-	app := NewApp(":8080", router)
+	srv := &http.Server{Addr: ":8080", Handler: router}
+	app := NewApp(srv)
 
-	fmt.Printf("addr: %+v", app.addr)
+	fmt.Printf("addr: %+v", app.httpServer.Addr)
 
 	// Output:
 	// addr: :8080

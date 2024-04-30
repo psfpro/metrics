@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	http2 "net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
@@ -110,8 +111,9 @@ func NewContainer() *Container {
 	router.Post(`/value/`, getRequestHandler.HandleRequest)
 	router.Get(`/value/{type}/{name}`, getMetricValueRequestHandler.HandleRequest)
 	router.NotFound(notFoundHandler.HandleRequest)
+	srv := &http2.Server{Addr: config.Address, Handler: router}
 
-	app := http.NewApp(config.Address, router)
+	app := http.NewApp(srv)
 
 	return &Container{
 		app: app,

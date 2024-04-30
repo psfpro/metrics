@@ -37,6 +37,9 @@ func (h *CryptoDecoder) Decode(next http.Handler) http.Handler {
 			encryptedKey := bodyBytes[len(bodyBytes)-256-12 : len(bodyBytes)-12]
 			nonce := bodyBytes[len(bodyBytes)-12:]
 			aesKey, err := rsa.DecryptPKCS1v15(rand.Reader, privateKey, encryptedKey)
+			if err != nil {
+				panic(err)
+			}
 
 			// Decrypt the data using AES-GCM
 			blockCipher, err := aes.NewCipher(aesKey)
