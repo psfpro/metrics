@@ -1,108 +1,45 @@
 package server
 
 import (
-	"errors"
 	"flag"
+	"github.com/mailru/easyjson"
+	"github.com/psfpro/metrics/pkg/config"
+	"log"
 	"os"
-	"strconv"
-	"strings"
 )
 
+//easyjson:json
 type Config struct {
-	serverAddress   *NetAddress
-	storeInterval   int64
-	fileStoragePath string
-	restore         bool
-	databaseDsn     *DatabaseDsn
-	hashKey         string
+	Address       string `json:"address"`
+	Restore       bool   `json:"restore"`
+	StoreInterval int64  `json:"store_interval"`
+	StoragePath   string `json:"store_file"`
+	DatabaseDsn   string `json:"database_dsn"`
+	HashKey       string `json:"hash_key"`
+	CryptoKey     string `json:"crypto_key"`
 }
 
 func NewConfig() *Config {
-	address := &NetAddress{}
-	err := address.Set(":8080")
-	if err != nil {
-		panic(err)
+	var cfg Config
+	file := flag.String("cfg", "config-server.json", "Configuration file")
+	if envFile := os.Getenv("CONFIG"); envFile != "" {
+		file = &envFile
 	}
-	databaseDsn := &DatabaseDsn{}
-	_ = flag.Value(address)
-	_ = flag.Value(databaseDsn)
-	storeInterval := flag.Int64("i", 300, "Store interval")
-	fileStoragePath := flag.String("f", "/tmp/metrics-db.json", "File storage path")
-	restore := flag.Bool("r", true, "Restore")
-	hashKey := flag.String("k", "123", "Hash key")
-	flag.Var(address, "a", "Net serverAddress host:port")
-	flag.Var(databaseDsn, "d", "Database DSN")
-	flag.Parse()
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		err = address.Set(envRunAddr)
-		if err != nil {
-			panic(err)
+	reader, err := os.Open(*file)
+	if err != nil {
+		log.Println(err)
+	} else {
+		if err := easyjson.UnmarshalFromReader(reader, &cfg); err != nil {
+			log.Println(err)
 		}
 	}
-	if envDatabaseDsn := os.Getenv("DATABASE_DSN"); envDatabaseDsn != "" {
-		err = databaseDsn.Set(envDatabaseDsn)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
-		i, _ := strconv.ParseInt(envStoreInterval, 10, 64)
-		storeInterval = &i
-	}
-	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
-		fileStoragePath = &envFileStoragePath
-	}
-	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
-		r, _ := strconv.ParseBool(envRestore)
-		restore = &r
-	}
-	if envHashKey := os.Getenv("KEY"); envHashKey != "" {
-		hashKey = &envHashKey
-	}
+	config.StringVar(&cfg.Address, "ADDRESS", "a", "Net serverAddress host:port")
+	config.Int64Var(&cfg.StoreInterval, "STORE_INTERVAL", "i", "Store interval")
+	config.StringVar(&cfg.StoragePath, "FILE_STORAGE_PATH", "f", "File storage path")
+	config.BoolVar(&cfg.Restore, "RESTORE", "r", "Restore")
+	config.StringVar(&cfg.DatabaseDsn, "DATABASE_DSN", "d", "Database DSN")
+	config.StringVar(&cfg.HashKey, "KEY", "k", "Hash key")
+	config.StringVar(&cfg.CryptoKey, "CRYPTO_KEY", "crypto-key", "crypto key")
 
-	return &Config{
-		serverAddress:   address,
-		storeInterval:   *storeInterval,
-		fileStoragePath: *fileStoragePath,
-		restore:         *restore,
-		databaseDsn:     databaseDsn,
-		hashKey:         *hashKey,
-	}
-}
-
-type NetAddress struct {
-	Host string
-	Port int
-}
-
-func (a NetAddress) String() string {
-	return a.Host + ":" + strconv.Itoa(a.Port)
-}
-
-func (a *NetAddress) Set(s string) error {
-	hp := strings.Split(s, ":")
-	if len(hp) != 2 {
-		return errors.New("need serverAddress in a form host:port")
-	}
-	port, err := strconv.Atoi(hp[1])
-	if err != nil {
-		return err
-	}
-	a.Host = hp[0]
-	a.Port = port
-	return nil
-}
-
-type DatabaseDsn struct {
-	value string
-}
-
-func (d DatabaseDsn) String() string {
-	return d.value
-}
-
-func (d *DatabaseDsn) Set(s string) error {
-	d.value = s
-
-	return nil
+	return &cfg
 }

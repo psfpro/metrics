@@ -3,16 +3,28 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
-	"math/rand"
+	mathRand "math/rand"
 	"net/http"
+	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -22,8 +34,12 @@ import (
 )
 
 type App struct {
-	config    *Config
-	pollCount int64
+	config       *Config
+	pollCount    int64
+	closer       context.CancelFunc
+	closed       chan struct{}
+	collectGroup sync.WaitGroup
+	sendGroup    sync.WaitGroup
 }
 
 func NewApp(config *Config) *App {
@@ -33,30 +49,82 @@ func NewApp(config *Config) *App {
 }
 
 func (obj *App) Run() {
+	obj.runWorkers()
+	obj.waitSignal()
+}
+
+func (obj *App) runWorkers() {
+	ctx, closer := context.WithCancel(context.Background())
+	obj.closer = closer
+	obj.closed = make(chan struct{})
+
 	collectJobs := make(chan int, obj.config.RateLimit)
 	collectResults := make(chan []model.Metrics, obj.config.RateLimit)
 	sendResults := make(chan error, obj.config.RateLimit)
+	// запускаем сбор метрик, ждем завершения воркеров и закрываем канал
+	go func() {
+		for w := 1; w <= 3; w++ {
+			obj.collectGroup.Add(1)
+			go obj.collect(w, collectJobs, collectResults)
+		}
+		obj.collectGroup.Wait()
+		close(collectResults)
+	}()
+	// запускаем отправку метрик, ждем завершения воркеров и закрываем канал
+	go func() {
+		for w := 1; w <= 3; w++ {
+			obj.sendGroup.Add(1)
+			go obj.send(w, collectResults, sendResults)
+		}
+		obj.sendGroup.Wait()
+		close(sendResults)
+		obj.closed <- struct{}{} // можно завершать приложение gracefully
+	}()
 
-	defer close(collectJobs)
+	go func() {
+		defer close(collectJobs)
+		ticker := time.NewTicker(time.Duration(obj.config.PollInterval) * time.Second)
+		for {
+			select {
+			case <-ctx.Done(): // Проверка на сигнал об отмене
+				return
+			case <-ticker.C:
+				collectJobs <- 1
+			}
+		}
+	}()
 
-	// создаем и запускаем 3 воркера, это и есть пул,
-	// передаем id, это для наглядности, канал задач и канал результатов
-	for w := 1; w <= 3; w++ {
-		go obj.collect(w, collectJobs, collectResults)
-	}
-	for w := 1; w <= 3; w++ {
-		go obj.send(w, collectResults, sendResults)
-	}
-
-	ticker := time.NewTicker(obj.config.PollInterval)
-	for {
-		select {
-		case <-ticker.C:
-			collectJobs <- 1
-		case err := <-sendResults:
+	go func() {
+		for {
+			err := <-sendResults
 			if err != nil {
 				log.Printf("Ошибка отправки метрик: %v", err)
 			}
+		}
+	}()
+}
+
+func (obj *App) waitSignal() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	sig := <-signalChan
+	signal.Stop(signalChan)
+	log.Printf("received signal %s, shutting down", sig.String())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	obj.shutdown(ctx)
+}
+
+func (obj *App) shutdown(ctx context.Context) {
+	obj.closer()
+	for {
+		select {
+		case <-obj.closed: // ждём завершения процедуры graceful shutdown
+			log.Println("shutdown gracefully")
+			return
+		case <-ctx.Done():
+			log.Println(ctx.Err())
+			return
 		}
 	}
 }
@@ -127,17 +195,54 @@ func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 		return err
 	}
 	urlString := fmt.Sprintf("%s/updates", obj.config.ServerAddress)
+	var encryption string
+	if obj.config.CryptoKey != "" {
+		rsaPublicKey, err := loadRSAPublicKey(obj.config.CryptoKey)
+		if err != nil {
+			return err
+		}
+		// Generate a new AES key
+		aesKey := make([]byte, aes.BlockSize)
+		if _, err := rand.Read(aesKey); err != nil {
+			return err
+		}
+		// Encrypt the data with AES
+		blockCipher, err := aes.NewCipher(aesKey)
+		if err != nil {
+			return err
+		}
+		gcm, err := cipher.NewGCM(blockCipher)
+		if err != nil {
+			return err
+		}
+		nonce := make([]byte, gcm.NonceSize())
+		if _, err := rand.Read(nonce); err != nil {
+			return err
+		}
+		encryptedData := gcm.Seal(nil, nonce, reqBytes, nil)
+		// Encrypt the AES key with RSA
+		encryptedKey, err := rsa.EncryptPKCS1v15(rand.Reader, rsaPublicKey, aesKey)
+		if err != nil {
+			return err
+		}
+		reqBytes = append(encryptedData, encryptedKey...)
+		reqBytes = append(reqBytes, nonce...)
+		encryption = "rsa"
+	}
 	body, err := obj.compress(reqBytes)
 	if err != nil {
 		return err
 	}
 	request, _ := http.NewRequest("POST", urlString, &body)
+	if encryption != "" {
+		request.Header.Set("X-Encryption", encryption)
+	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
 	if obj.config.HashKey != "" {
-		hmac := hmac.New(sha256.New, []byte(obj.config.HashKey))
-		hmac.Write(reqBytes)
-		signature := hex.EncodeToString(hmac.Sum(nil))
+		hash := hmac.New(sha256.New, []byte(obj.config.HashKey))
+		hash.Write(reqBytes)
+		signature := hex.EncodeToString(hash.Sum(nil))
 		request.Header.Set("HashSHA256", signature)
 	}
 	resp, err := http.DefaultClient.Do(request)
@@ -167,19 +272,20 @@ func (obj *App) compress(data []byte) (bytes.Buffer, error) {
 }
 
 func (obj *App) collect(id int, jobs <-chan int, results chan<- []model.Metrics) {
-	for j := range jobs {
-		log.Println("collect", id, "start", j)
+	for range jobs {
+		log.Println("collect", id)
 		metrics := obj.collectMetrics()
-		metrics["RandomValue"] = rand.Float64()
+		metrics["RandomValue"] = mathRand.Float64()
 		obj.pollCount++
 		var batch []model.Metrics
 		for name, value := range metrics {
 			batch = append(batch, obj.gaugeMetric(name, &value))
 		}
 		batch = append(batch, obj.counterMetric("PollCount", &obj.pollCount))
-		log.Println("collect", id, "end", j)
 		results <- batch
 	}
+	obj.collectGroup.Done()
+	log.Printf("collect %d stopping\n", id)
 }
 func (obj *App) psutil(id int, jobs <-chan int, results chan<- []model.Metrics) {
 	for j := range jobs {
@@ -201,7 +307,7 @@ func (obj *App) psutil(id int, jobs <-chan int, results chan<- []model.Metrics) 
 
 func (obj *App) send(id int, jobs <-chan []model.Metrics, results chan<- error) {
 	dataForSend := make(map[string]model.Metrics)
-	ticker := time.NewTicker(obj.config.ReportInterval)
+	ticker := time.NewTicker(time.Duration(obj.config.ReportInterval) * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -209,6 +315,7 @@ func (obj *App) send(id int, jobs <-chan []model.Metrics, results chan<- error) 
 		case j, ok := <-jobs:
 			if !ok {
 				log.Printf("send %d stopping\n", id)
+				obj.sendGroup.Done()
 				return
 			}
 			log.Printf("send %d starting task\n", id)
@@ -232,4 +339,32 @@ func (obj *App) send(id int, jobs <-chan []model.Metrics, results chan<- error) 
 			results <- err
 		}
 	}
+}
+
+func loadRSAPublicKey(filename string) (*rsa.PublicKey, error) {
+	// Read the file containing the public key
+	keyData, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read public key file: %w", err)
+	}
+
+	// Decode the PEM data
+	block, _ := pem.Decode(keyData)
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil, errors.New("failed to decode PEM block containing public key")
+	}
+
+	// Parse the public key
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse public key: %w", err)
+	}
+
+	// Assert the type to *rsa.PublicKey
+	rsaPub, ok := pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an RSA public key")
+	}
+
+	return rsaPub, nil
 }
