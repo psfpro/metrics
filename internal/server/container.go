@@ -88,10 +88,11 @@ func NewContainer() *Container {
 	updatesRequestHandler := handler.NewUpdatesRequestHandler(updateGaugeMetricHandler, updateCounterMetricHandler, increaseCounterMetricHandler)
 	getMetricValueRequestHandler := handler.NewGetMetricValueRequestHandler(gaugeMetricRepository, counterMetricRepository)
 	getRequestHandler := handler.NewGetRequestHandler(gaugeMetricRepository, counterMetricRepository)
+	trustedSubnet := handler.NewTrustedSubnet(config.TrustedSubnet)
 
 	router := chi.NewRouter()
 	router.Use(
-		middleware.RealIP, handler.Compressor, handler.Logger, middleware.Logger, cryptoDecoderMiddleware.Decode,
+		trustedSubnet.Check, middleware.RealIP, handler.Compressor, handler.Logger, middleware.Logger, cryptoDecoderMiddleware.Decode,
 		hashCheckerMiddleware.Check, storageMiddleware.Handle, middleware.Recoverer,
 	)
 	router.Mount("/debug", middleware.Profiler())

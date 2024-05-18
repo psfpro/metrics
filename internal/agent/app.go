@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	mathRand "math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -40,11 +41,15 @@ type App struct {
 	closed       chan struct{}
 	collectGroup sync.WaitGroup
 	sendGroup    sync.WaitGroup
+	ip           net.IP
 }
 
 func NewApp(config *Config) *App {
+	ip, _ := detectIPAddress()
+
 	return &App{
 		config: config,
+		ip:     ip,
 	}
 }
 
@@ -239,6 +244,9 @@ func (obj *App) sendBatch(metric []model.Metrics) (err error) {
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Content-Encoding", "gzip")
+	if obj.ip != nil {
+		request.Header.Set("X-Real-IP", obj.ip.String())
+	}
 	if obj.config.HashKey != "" {
 		hash := hmac.New(sha256.New, []byte(obj.config.HashKey))
 		hash.Write(reqBytes)

@@ -50,6 +50,8 @@ func easyjson6615c02eDecodeGithubComPsfproMetricsInternalServer(in *jlexer.Lexer
 			out.HashKey = string(in.String())
 		case "crypto_key":
 			out.CryptoKey = string(in.String())
+		case "trusted_subnet":
+			out.TrustedSubnet = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -98,6 +100,11 @@ func easyjson6615c02eEncodeGithubComPsfproMetricsInternalServer(out *jwriter.Wri
 		const prefix string = ",\"crypto_key\":"
 		out.RawString(prefix)
 		out.String(string(in.CryptoKey))
+	}
+	{
+		const prefix string = ",\"trusted_subnet\":"
+		out.RawString(prefix)
+		out.String(string(in.TrustedSubnet))
 	}
 	out.RawByte('}')
 }
