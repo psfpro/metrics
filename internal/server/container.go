@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"database/sql"
+	"github.com/psfpro/metrics/proto"
+	"google.golang.org/grpc"
 	"log"
-	http2 "net/http"
+	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
@@ -12,16 +14,16 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/psfpro/metrics/internal/server/application"
-	"github.com/psfpro/metrics/internal/server/infrastructure/api/http"
+	grpcApi "github.com/psfpro/metrics/internal/server/infrastructure/api/grpc"
 	"github.com/psfpro/metrics/internal/server/infrastructure/api/http/handler"
 	"github.com/psfpro/metrics/internal/server/infrastructure/storage"
 )
 
 type Container struct {
-	app *http.App
+	app *App
 }
 
-func (c Container) App() *http.App {
+func (c Container) App() *App {
 	return c.app
 }
 
@@ -112,9 +114,12 @@ func NewContainer() *Container {
 	router.Post(`/value/`, getRequestHandler.HandleRequest)
 	router.Get(`/value/{type}/{name}`, getMetricValueRequestHandler.HandleRequest)
 	router.NotFound(notFoundHandler.HandleRequest)
-	srv := &http2.Server{Addr: config.Address, Handler: router}
+	httpServer := &http.Server{Addr: config.Address, Handler: router}
+	grpcServer := grpc.NewServer()
+	srv := grpcApi.NewMetricsServer(updateGaugeMetricHandler, updateCounterMetricHandler, increaseCounterMetricHandler)
+	proto.RegisterMetricsServer(grpcServer, srv)
 
-	app := http.NewApp(srv)
+	app := NewApp(httpServer, grpcServer)
 
 	return &Container{
 		app: app,

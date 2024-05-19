@@ -73,7 +73,12 @@ func TestTrustedSubnet_Check(t *testing.T) {
 			r.Header.Add("X-Real-IP", tt.args.ip)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, r)
-			assert.Equal(t, tt.want, w.Result().StatusCode)
+			res := w.Result()
+			defer func() {
+				err := res.Body.Close()
+				assert.NoError(t, err)
+			}()
+			assert.Equal(t, tt.want, res.StatusCode)
 		})
 	}
 }
