@@ -1,9 +1,11 @@
-package http
+package server
 
 import (
 	"context"
 	"errors"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,27 +13,37 @@ import (
 	"time"
 )
 
-// App represents HTTP application.
 type App struct {
 	httpServer *http.Server
+	grpcServer *grpc.Server
 }
 
-func NewApp(httpServer *http.Server) *App {
-	return &App{
-		httpServer: httpServer,
-	}
+func NewApp(httpServer *http.Server, grpcServer *grpc.Server) *App {
+	return &App{httpServer: httpServer, grpcServer: grpcServer}
 }
 
-// Run listen and serve HTTP requests.
 func (a *App) Run() {
 	a.runHTTPServer()
+	a.runGrpcServer()
 	a.waitSignal()
 }
 
 func (a *App) runHTTPServer() {
 	go func() {
 		if err := a.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("server error: %v", err)
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
+}
+
+func (a *App) runGrpcServer() {
+	go func() {
+		listen, err := net.Listen("tcp", ":3200")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := a.grpcServer.Serve(listen); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("gRPC server error: %v", err)
 		}
 	}()
 }
@@ -51,4 +63,5 @@ func (a *App) shutdown(ctx context.Context) {
 	if err := a.httpServer.Shutdown(ctx); err != nil {
 		log.Printf("shutdown http server error %v", err)
 	}
+	a.grpcServer.GracefulStop()
 }

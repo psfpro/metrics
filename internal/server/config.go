@@ -17,6 +17,7 @@ type Config struct {
 	DatabaseDsn   string `json:"database_dsn"`
 	HashKey       string `json:"hash_key"`
 	CryptoKey     string `json:"crypto_key"`
+	TrustedSubnet string `json:"trusted_subnet"`
 }
 
 func NewConfig() *Config {
@@ -40,6 +41,7 @@ func NewConfig() *Config {
 	config.StringVar(&cfg.DatabaseDsn, "DATABASE_DSN", "d", "Database DSN")
 	config.StringVar(&cfg.HashKey, "KEY", "k", "Hash key")
 	config.StringVar(&cfg.CryptoKey, "CRYPTO_KEY", "crypto-key", "crypto key")
+	config.StringVar(&cfg.TrustedSubnet, "TRUSTED_SUBNET", "t", "trusted subnet")
 
 	return &cfg
 }
